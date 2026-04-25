@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, AlertTriangle, Send, Loader2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, serverTimestamp, getDoc, doc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 
 interface ReportModalProps {
@@ -34,25 +35,29 @@ export default function ReportModal({ isOpen, onClose, targetId, contentType, co
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reason || !user || !supabase || supabase.isDummy) return;
+    if (!reason || !user) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const { error: reportError } = await supabase
-        .from('reports')
-        .insert({
-          reporter_id: user.id,
-          reported_id: targetId,
-          content_type: contentType,
-          content_id: contentId,
-          reason,
-          description,
-          status: 'pending'
-        });
+      // Get target profile name
+      const targetDoc = await getDoc(doc(db, 'profiles', targetId));
+      const targetName = targetDoc.exists() ? targetDoc.data().display_name : "Unknown";
+      const myName = (user as any).displayName || "Taurus Member"; // Or from profile context if available
 
-      if (reportError) throw reportError;
+      await addDoc(collection(db, 'reports'), {
+        reporter_id: user.uid,
+        reporter_name: myName,
+        reported_id: targetId,
+        reported_name: targetName,
+        content_type: contentType,
+        content_id: contentId || null,
+        reason,
+        description: description || null,
+        status: 'pending',
+        created_at: serverTimestamp()
+      });
 
       setSuccess(true);
       setTimeout(() => {
@@ -77,22 +82,22 @@ export default function ReportModal({ isOpen, onClose, targetId, contentType, co
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="bg-cream w-full max-w-md rounded-[28px] border-2 border-clay shadow-2xl overflow-hidden relative p-8"
+        className="glass-modal w-full max-w-md rounded-[32px] border border-white/10 shadow-2xl overflow-hidden relative p-8 backdrop-blur-3xl"
       >
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-mid-gray hover:text-charcoal transition-colors"
+          className="absolute top-6 right-6 p-2 text-cream/40 hover:text-cream transition-colors z-10"
         >
           <X className="w-6 h-6" />
         </button>
 
-        <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-12 h-12 bg-clay/10 rounded-full flex items-center justify-center text-clay mb-4">
-            <AlertTriangle className="w-6 h-6" />
+        <div className="flex flex-col items-center text-center mb-10">
+          <div className="w-16 h-16 bg-clay/10 rounded-2xl flex items-center justify-center text-clay mb-6 rotate-3">
+            <AlertTriangle className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold">Report Content</h2>
-          <p className="text-mid-gray text-sm mt-1">
-            Help us keep the Taurus tribe safe and respectful.
+          <h2 className="text-3xl font-black text-cream tracking-tight mb-2">Flag Signal.</h2>
+          <p className="text-cream/50 text-sm font-medium">
+            Help us sanitize the Taurus nexus.
           </p>
         </div>
 
@@ -102,56 +107,57 @@ export default function ReportModal({ isOpen, onClose, targetId, contentType, co
               key="success"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center justify-center py-8 text-center"
+              className="flex flex-col items-center justify-center py-10 text-center"
             >
-              <CheckCircle2 className="w-16 h-16 text-forest-green mb-4" />
-              <h3 className="text-lg font-bold">Thank You</h3>
-              <p className="text-mid-gray text-sm">Your report has been submitted correctly and will be reviewed by our team.</p>
+              <CheckCircle2 className="w-16 h-16 text-forest-green mb-6" />
+              <h3 className="text-2xl font-black text-cream tracking-tight">Report Logged.</h3>
+              <p className="text-cream/40 text-sm font-medium">Your report has been logged in the secure vault for review.</p>
             </motion.div>
           ) : (
             <motion.form 
               key="form"
               onSubmit={handleSubmit} 
-              className="space-y-4"
+              className="space-y-6"
             >
               <div>
-                <label className="block text-[10px] font-bold text-mid-gray uppercase tracking-widest mb-2 ml-1">Reason</label>
+                <label className="block text-[10px] font-black text-taurus-gold uppercase tracking-[0.2em] mb-3 ml-1">Detection Reason</label>
                 <select
                   required
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  className="w-full bg-white border border-light-gray rounded-xl p-3 text-sm focus:border-clay outline-none transition-colors"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-cream focus:border-clay outline-none transition-all"
                 >
-                  <option value="">Select a reason...</option>
+                  <option value="" className="bg-charcoal text-cream">Select a reason...</option>
                   {REASONS.map(r => (
-                    <option key={r} value={r}>{r}</option>
+                    <option key={r} value={r} className="bg-charcoal text-cream">{r}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-mid-gray uppercase tracking-widest mb-2 ml-1">Details (Optional)</label>
+                <label className="block text-[10px] font-black text-taurus-gold uppercase tracking-[0.2em] mb-3 ml-1">Intel Breakdown (Optional)</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-white border border-light-gray rounded-xl p-4 text-sm min-h-[100px] focus:border-clay outline-none transition-colors"
-                  placeholder="Provide more context about this report..."
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm text-cream min-h-[120px] focus:border-clay outline-none transition-all placeholder:text-cream/20"
+                  placeholder="Provide more evidence..."
                 />
               </div>
 
-              {error && <p className="text-clay text-xs font-medium text-center">{error}</p>}
+              {error && <p className="text-clay text-xs font-bold uppercase tracking-wider animate-pulse text-center">{error}</p>}
 
               <button
                 type="submit"
                 disabled={loading || !reason}
-                className="btn-primary w-full flex items-center justify-center gap-3 h-12 mt-6"
+                className="btn-primary w-full flex items-center justify-center gap-3 h-14 mt-4"
+                style={{ backgroundColor: 'var(--color-clay)' }}
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-6 h-6 animate-spin" />
                 ) : (
                   <>
-                    <Send className="w-4 h-4" />
-                    Submit Report
+                    <Send className="w-5 h-5 shadow-lg" />
+                    Submit Signal
                   </>
                 )}
               </button>

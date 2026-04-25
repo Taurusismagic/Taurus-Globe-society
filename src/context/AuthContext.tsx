@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { User } from '@supabase/supabase-js';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged, User, signOut as firebaseSignOut } from 'firebase/auth';
+import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from '@/lib/errorUtils';
 
 interface Profile {
   id: string;
@@ -41,62 +43,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchBlocks = async (uid: string) => {
-    if (!supabase || supabase.isDummy) return;
-    // Users I blocked
-    const { data: myBlocks } = await supabase
-      .from('blocks')
-      .select('blocked_id')
-      .eq('blocker_id', uid);
-    
-    // Users who blocked me (to hide myself from them)
-    const { data: blockedMe } = await supabase
-      .from('blocks')
-      .select('blocker_id')
-      .eq('blocked_id', uid);
+    const path = 'blocks';
+    try {
+      // Users I blocked
+      const myBlocksQuery = query(collection(db, path), where('blocker_id', '==', uid));
+      const myBlocksSnap = await getDocs(myBlocksQuery);
+      
+      // Users who blocked me (to hide myself from them)
+      const blockedMeQuery = query(collection(db, path), where('blocked_id', '==', uid));
+      const blockedMeSnap = await getDocs(blockedMeQuery);
 
-    if (myBlocks) setBlockedIds(myBlocks.map(b => b.blocked_id));
-    if (blockedMe) setWhoBlockedMeIds(blockedMe.map(b => b.blocker_id));
+      setBlockedIds(myBlocksSnap.docs.map(doc => doc.data().blocked_id));
+      setWhoBlockedMeIds(blockedMeSnap.docs.map(doc => doc.data().blocker_id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, path);
+    }
   };
 
   const fetchProfile = async (uid: string) => {
-    if (!supabase || supabase.isDummy) return;
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', uid)
-      .single();
-    
-    if (!error && data) {
-      setProfile(data);
+    const path = `profiles/${uid}`;
+    try {
+      const docRef = doc(db, 'profiles', uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setProfile({ id: docSnap.id, ...docSnap.data() } as Profile);
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, path);
     }
   };
 
   useEffect(() => {
-    if (!supabase || supabase.isDummy) {
-      setLoading(false);
-      return;
-    }
-
-    // Initial check
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await Promise.all([
-          fetchProfile(session.user.id),
-          fetchBlocks(session.user.id)
-        ]);
-      }
-      setLoading(false);
-    });
-
-    // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setLoading(true);
-      setUser(session?.user ?? null);
-      if (session?.user) {
+      setUser(currentUser);
+      if (currentUser) {
         await Promise.all([
-          fetchProfile(session.user.id),
-          fetchBlocks(session.user.id)
+          fetchProfile(currentUser.uid),
+          fetchBlocks(currentUser.uid)
         ]);
       } else {
         setProfile(null);
@@ -106,19 +90,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, []);
 
   const signOut = async () => {
-    if (supabase && !supabase.isDummy) await supabase.auth.signOut();
+    await firebaseSignOut(auth);
   };
 
   const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id);
+    if (user) await fetchProfile(user.uid);
   };
 
   const refreshBlocks = async () => {
-    if (user) await fetchBlocks(user.id);
+    if (user) await fetchBlocks(user.uid);
   };
 
   const isAdmin = user?.email === ADMIN_EMAIL;

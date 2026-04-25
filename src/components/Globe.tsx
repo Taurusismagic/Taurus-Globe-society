@@ -81,7 +81,7 @@ export default function Globe({ members, targetLocation, className }: GlobeProps
     }
   }, [targetLocation]);
 
-  const maxDensity = Math.max(...Object.values(tribeStats).map(s => s.count), 1);
+  const maxDensity = Math.max(...Object.values(tribeStats).map((s: any) => s.count), 1);
 
   return (
     <div className={`relative w-full h-full ${className}`}>
@@ -89,20 +89,20 @@ export default function Globe({ members, targetLocation, className }: GlobeProps
         ref={globeEl}
         backgroundColor="rgba(0,0,0,0)"
         showAtmosphere={true}
-        atmosphereColor="#8B6914"
-        atmosphereAltitude={0.2}
+        atmosphereColor="#D4AF37"
+        atmosphereAltitude={0.15}
         
         // Country Heatmap (Glint style)
         polygonsData={countries}
         polygonCapColor={(d: any) => {
           const stats = tribeStats[d.properties.ISO_A3];
-          if (!stats) return 'rgba(139, 105, 20, 0.05)';
+          if (!stats) return 'rgba(212, 175, 55, 0.08)';
           const intensity = stats.count / maxDensity;
-          return `rgba(139, 105, 20, ${0.1 + intensity * 0.6})`;
+          return `rgba(212, 175, 55, ${0.2 + intensity * 0.7})`;
         }}
         polygonSideColor={() => 'rgba(0, 0, 0, 0)'}
         polygonStrokeColor={(d: any) => 
-          d.properties.ISO_A3 === hoveredCountry || d.properties.ISO_A3 === selectedCountry?.properties?.ISO_A3 ? '#8B6914' : 'rgba(139, 105, 20, 0.15)'
+          d.properties.ISO_A3 === hoveredCountry || d.properties.ISO_A3 === selectedCountry?.properties?.ISO_A3 ? '#F5E6C0' : 'rgba(212, 175, 55, 0.2)'
         }
         polygonLabel={(d: any) => `
            <div class="bg-space-bg/90 border border-taurus-gold/30 p-2 rounded-lg text-[10px] uppercase font-black text-taurus-gold">
@@ -153,7 +153,7 @@ export default function Globe({ members, targetLocation, className }: GlobeProps
               <div className="p-5 border-b border-taurus-gold/20 flex justify-between items-center">
                  <div>
                     <div className="text-[10px] font-black text-taurus-gold uppercase tracking-widest mb-1">Regional Intel</div>
-                    <div className="text-xl font-bold text-cream leading-none tracking-tight">${selectedCountry.properties.ADMIN}</div>
+                    <div className="text-xl font-bold text-cream leading-none tracking-tight">{selectedCountry.properties.ADMIN}</div>
                  </div>
                  <button onClick={() => setSelectedCountry(null)} className="p-1 hover:bg-taurus-gold/10 rounded-full transition-colors text-taurus-gold">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -164,11 +164,11 @@ export default function Globe({ members, targetLocation, className }: GlobeProps
                     <div className="text-[9px] font-black text-taurus-gold/60 uppercase tracking-[0.2em] mb-3">Tribe Composition</div>
                     <div className="grid grid-cols-2 gap-3">
                        <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                          <div className="text-2xl font-black text-cream">${selectedStats?.count || 0}</div>
+                          <div className="text-2xl font-black text-cream">{selectedStats?.count || 0}</div>
                           <div className="text-[8px] font-bold text-cream/40 uppercase tracking-widest mt-1">Total Members</div>
                        </div>
                        <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                          <div className="text-2xl font-black text-forest-green">${selectedStats?.business || 0}</div>
+                          <div className="text-2xl font-black text-forest-green">{selectedStats?.business || 0}</div>
                           <div className="text-[8px] font-bold text-forest-green/60 uppercase tracking-widest mt-1">Leaders</div>
                        </div>
                     </div>
@@ -215,7 +215,7 @@ export default function Globe({ members, targetLocation, className }: GlobeProps
         </div>
       </div>
 
-      <div className="absolute inset-0 pointer-events-none globe-vignette" />
+      <div className="absolute inset-0 pointer-events-none globe-vignette opacity-50" />
     </div>
   );
 }

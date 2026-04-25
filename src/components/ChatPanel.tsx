@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, Lock, Sparkles, MessageCircle, MoreVertical, X, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/firebase";
+import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import ReportModal from "./ReportModal";
+import { handleFirestoreError, OperationType } from "@/lib/errorUtils";
 
 interface ChatPanelProps {
   isOpen: boolean;
@@ -31,51 +33,29 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick }: ChatPanel
   });
 
   const isPaid = profile?.tier === 'paid';
-  const allRelatedBlockIds = React.useMemo(() => [...blockedIds, ...whoBlockedMeIds], [blockedIds, whoBlockedMeIds]);
+  const allRelatedBlockIds = useMemo(() => [...blockedIds, ...whoBlockedMeIds], [blockedIds, whoBlockedMeIds]);
 
   useEffect(() => {
-    if (!isOpen || !isPaid || !supabase || supabase.isDummy) return;
+    if (!isOpen || !isPaid) return;
 
-    async function fetchMessages() {
-      if (!supabase || supabase.isDummy) return;
-      // Fetch messages excluding those from people I blocked or who blocked me
-      let query = supabase
-        .from('messages')
-        .select('*, profiles(display_name, avatar_url)')
-        .order('created_at', { ascending: false })
-        .limit(50);
+    const path = 'messages';
+    const messagesRef = collection(db, path);
+    const q = query(messagesRef, orderBy('created_at', 'desc'), limit(50));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      let msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
+      // Client-side block filtering
       if (allRelatedBlockIds.length > 0) {
-        query = query.not('user_id', 'in', `(${allRelatedBlockIds.join(',')})`);
+        msgs = msgs.filter(m => !allRelatedBlockIds.includes((m as any).user_id));
       }
 
-      const { data } = await query;
-      
-      if (data) setMessages(data.reverse());
-    }
-    fetchMessages();
+      setMessages(msgs.reverse());
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
 
-    const channel = supabase.channel('chat-global')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
-        if (!supabase || supabase.isDummy) return;
-        // Skip if sender is blocked
-        if (allRelatedBlockIds.includes(payload.new.user_id)) return;
-
-        // Fetch profile info for the new message
-        const { data } = await supabase.from('profiles').select('display_name, avatar_url').eq('id', payload.new.user_id).single();
-        const msgWithProfile = { ...payload.new, profiles: data };
-        
-        // Prevent duplicates
-        setMessages(prev => {
-          if (prev.some(m => m.id === payload.new.id)) return prev;
-          return [...prev, msgWithProfile];
-        });
-      })
-      .subscribe();
-
-    return () => {
-      if (supabase && !supabase.isDummy) supabase.removeChannel(channel);
-    };
+    return () => unsubscribe();
   }, [isOpen, isPaid, allRelatedBlockIds]);
 
   useEffect(() => {
@@ -86,19 +66,22 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick }: ChatPanel
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || !isPaid || !supabase) return;
+    if (!newMessage.trim() || !user || !isPaid || !profile) return;
 
     const msg = newMessage;
     setNewMessage("");
+    const path = 'messages';
     
     try {
-      const { error } = await supabase.from('messages').insert({
-        user_id: user.id,
-        content: msg
+      await addDoc(collection(db, path), {
+        user_id: user.uid,
+        author_name: profile.display_name,
+        author_avatar: profile.avatar_url,
+        content: msg,
+        created_at: serverTimestamp()
       });
-      if (error) throw error;
     } catch (err) {
-      console.error(err);
+      handleFirestoreError(err, OperationType.WRITE, path);
     }
   };
 
@@ -120,88 +103,106 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick }: ChatPanel
            animate={{ x: 0 }}
            exit={{ x: "100%" }}
            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-           className="relative w-full max-w-[420px] bg-cream h-full border-l-4 border-clay shadow-2xl flex flex-col pointer-events-auto"
+           className="relative w-full max-w-[420px] glass-panel h-full border-l border-taurus-gold/30 shadow-2xl flex flex-col pointer-events-auto"
         >
-          <div className="p-6 flex items-center justify-between border-b border-clay/10">
-            <h2 className="font-bold text-xl flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-clay" />
-              Tribe Chat
-            </h2>
-            <button onClick={onClose} className="p-2 hover:bg-clay/10 rounded-full transition-colors">
+          <div className="p-8 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
+            <div>
+              <h2 className="font-black text-2xl flex items-center gap-3 text-taurus-gold tracking-tighter">
+                <div className="w-8 h-8 rounded-lg bg-taurus-gold flex items-center justify-center text-white shadow-gold">
+                  <MessageCircle className="w-5 h-5" />
+                </div>
+                Tribe Nexus
+              </h2>
+              <p className="text-[10px] text-cream/40 uppercase font-black tracking-widest mt-1">Encrypted Frequency</p>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-all text-cream/40 hover:text-cream">
               <X className="w-6 h-6" />
             </button>
           </div>
 
           <div className="flex-1 flex flex-col overflow-hidden relative">
             {!isPaid && (
-              <div className="absolute inset-0 z-20 bg-cream/10 backdrop-blur-[6px] flex flex-col items-center justify-center p-12 text-center">
-                <div className="w-16 h-16 bg-taurus-gold rounded-full flex items-center justify-center mb-6 shadow-glow">
-                  <Lock className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold mb-3">Paid Feature</h3>
-                <p className="text-mid-gray text-sm mb-8">
-                  The Global Chat is a sacred space for our paid members. Upgrade now to connect with the tribe.
+              <div className="absolute inset-0 z-20 bg-space-bg/60 backdrop-blur-xl flex flex-col items-center justify-center p-12 text-center">
+                <motion.div 
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="w-20 h-20 bg-taurus-gold/20 rounded-[2rem] flex items-center justify-center mb-8 border border-taurus-gold/30 shadow-gold"
+                >
+                  <Lock className="w-10 h-10 text-taurus-gold" />
+                </motion.div>
+                <h3 className="text-2xl font-black mb-4 text-cream tracking-tight">Authorized Personnel Only.</h3>
+                <p className="text-cream/50 text-base mb-10 font-medium">
+                  This frequency is reserved for initialized members of the tribe. Upgrade your credentials to enter the nexus.
                 </p>
                 <button 
                   onClick={onUpgradeClick}
-                  className="btn-primary w-full max-w-[200px] flex items-center justify-center gap-2"
+                  className="btn-primary w-full flex items-center justify-center gap-3"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  Upgrade Now
+                  <Sparkles className="w-5 h-5" />
+                  Upgrade Credentials
                 </button>
               </div>
             )}
 
             <div 
               ref={scrollRef}
-              className="flex-1 overflow-y-auto p-6 space-y-4"
+              className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-hide"
             >
               {messages.map((msg) => (
-                <div key={msg.id} className={cn("flex gap-3", msg.user_id === user?.id ? "flex-row-reverse" : "")}>
-                  <div className="w-8 h-8 rounded-full overflow-hidden bg-mid-gray/20 flex-shrink-0">
-                    <img src={msg.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.user_id}`} alt="Avatar" className="w-full h-full object-cover" />
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  key={msg.id} 
+                  className={cn("flex gap-4", msg.user_id === user?.uid ? "flex-row-reverse" : "")}
+                >
+                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-white/5 flex-shrink-0 border border-white/10 shadow-lg">
+                    <img src={msg.author_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.user_id}`} alt="Avatar" className="w-full h-full object-cover" />
                   </div>
-                  <div className={cn("flex flex-col max-w-[80%]", msg.user_id === user?.id ? "items-end" : "items-start")}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold text-mid-gray">{msg.profiles?.display_name || "Unknown"}</span>
-                      <span className="text-[9px] text-mid-gray/60">{formatDistanceToNow(new Date(msg.created_at))} ago</span>
+                  <div className={cn("flex flex-col max-w-[75%]", msg.user_id === user?.uid ? "items-end" : "items-start")}>
+                    <div className="flex items-center gap-3 mb-1.5 px-1">
+                      <span className="text-[10px] font-black text-taurus-gold uppercase tracking-widest">{msg.author_name || "Anonymous"}</span>
+                      {msg.created_at?.toDate && (
+                        <span className="text-[9px] text-cream/30 font-medium">{formatDistanceToNow(msg.created_at.toDate())} ago</span>
+                      )}
                     </div>
                     <div className={cn(
-                      "px-4 py-2 rounded-2xl text-sm shadow-sm relative group/msg",
-                      msg.user_id === user?.id ? "bg-taurus-gold text-white rounded-tr-none" : "bg-white text-charcoal rounded-tl-none border border-light-gray"
+                      "px-5 py-3 rounded-2xl text-[14px] leading-relaxed shadow-lg relative group/msg font-medium",
+                      msg.user_id === user?.uid 
+                        ? "bg-taurus-gold text-white rounded-tr-none shadow-gold/20" 
+                        : "bg-white/5 text-cream/90 rounded-tl-none border border-white/10 backdrop-blur-md"
                     )}>
                       {msg.content}
                       
-                      {msg.user_id !== user?.id && (
+                      {msg.user_id !== user?.uid && (
                         <button 
                           onClick={() => setReportState({ isOpen: true, targetId: msg.user_id, contentId: msg.id })}
-                          className="absolute -right-8 top-1/2 -translate-y-1/2 p-1 text-mid-gray/40 hover:text-clay opacity-0 group-hover/msg:opacity-100 transition-all"
-                          title="Report Message"
+                          className="absolute -right-10 top-1/2 -translate-y-1/2 p-2 text-cream/20 hover:text-clay opacity-0 group-hover/msg:opacity-100 transition-all"
+                          title="Report Flag"
                         >
                           <AlertTriangle className="w-4 h-4" />
                         </button>
                       )}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
 
-            <div className="p-6 bg-white border-t border-light-gray">
-              <form onSubmit={handleSend} className="relative">
+            <div className="p-8 bg-white/[0.02] border-t border-white/5">
+              <form onSubmit={handleSend} className="relative group">
                 <input 
                   disabled={!isPaid}
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder={isPaid ? "Message the tribe..." : "Upgrade to chat"}
-                  className="w-full h-12 bg-cream/50 border border-light-gray rounded-full px-6 pr-12 text-sm focus:border-taurus-gold outline-none transition-colors"
+                  placeholder={isPaid ? "Type a signal..." : "Initialization Required"}
+                  className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 pr-14 text-sm text-cream placeholder:text-cream/20 focus:border-taurus-gold/50 focus:bg-white/10 outline-none transition-all duration-300 backdrop-blur-md"
                 />
                 <button 
                   disabled={!isPaid || !newMessage.trim()}
                   type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-taurus-gold text-white rounded-full flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-taurus-gold text-white rounded-xl flex items-center justify-center disabled:opacity-20 disabled:grayscale transition-all hover:scale-105 active:scale-95 shadow-gold shadow-sm"
                 >
-                  <Send className="w-4 h-4" />
+                  <Send className="w-5 h-5" />
                 </button>
               </form>
             </div>

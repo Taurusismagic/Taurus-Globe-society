@@ -1,0 +1,101 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "User Profile",
+      "description": "Public and private user data stored on the maps node.",
+      "type": "object",
+      "properties": {
+        "display_name": { "type": "string" },
+        "avatar_url": { "type": "string" },
+        "city": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "user_type": { "type": "string", "enum": ["business", "fun"] },
+        "bio": { "type": "string" },
+        "instagram_handle": { "type": "string" },
+        "twitter_handle": { "type": "string" },
+        "is_visible": { "type": "boolean" },
+        "tier": { "type": "string", "enum": ["member", "paid"] },
+        "stripe_customer_id": { "type": "string" },
+        "stripe_subscription_id": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["display_name", "city", "latitude", "longitude", "user_type", "tier", "is_visible"]
+    },
+    "InviteCode": {
+      "title": "Invite Code",
+      "description": "Controls access to joining the tribe.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "uses_so_far": { "type": "number" },
+        "max_uses": { "type": "number" },
+        "is_active": { "type": "boolean" }
+      },
+      "required": ["code", "uses_so_far", "max_uses", "is_active"]
+    },
+    "Block": {
+      "title": "User Block",
+      "description": "Blocking relationship between users.",
+      "type": "object",
+      "properties": {
+        "blocker_id": { "type": "string" },
+        "blocked_id": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["blocker_id", "blocked_id", "created_at"]
+    },
+    "Message": {
+      "title": "Chat Message",
+      "description": "Global chat messages.",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "author_name": { "type": "string" },
+        "author_avatar": { "type": "string" },
+        "content": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["user_id", "content", "created_at", "author_name"]
+    },
+    "Report": {
+      "title": "User Report",
+      "description": "Reports of misconduct.",
+      "type": "object",
+      "properties": {
+        "reporter_id": { "type": "string" },
+        "reported_id": { "type": "string" },
+        "content_type": { "type": "string", "enum": ["message", "profile"] },
+        "content_id": { "type": "string" },
+        "reason": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "resolved", "dismissed"] },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reporter_id", "reported_id", "content_type", "reason", "status", "created_at"]
+    }
+  },
+  "firestore": {
+    "profiles/{userId}": {
+      "schema": "Profile",
+      "description": "User profiles."
+    },
+    "invite_codes/{codeId}": {
+      "schema": "InviteCode",
+      "description": "Invite codes."
+    },
+    "blocks/{blockId}": {
+      "schema": "Block",
+      "description": "User block records."
+    },
+    "messages/{messageId}": {
+      "schema": "Message",
+      "description": "Global chat messages."
+    },
+    "reports/{reportId}": {
+      "schema": "Report",
+      "description": "Moderation reports."
+    }
+  }
+}

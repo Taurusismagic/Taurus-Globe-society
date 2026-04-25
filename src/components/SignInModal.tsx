@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
-import { X, Mail, Lock, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { X, Mail, Lock, Loader2, ShieldCheck } from "lucide-react";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 interface SignInModalProps {
   isOpen: boolean;
@@ -16,17 +17,11 @@ export default function SignInModal({ isOpen, onClose }: SignInModalProps) {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supabase) return setError("System is currently offline. Please check back later.");
     setLoading(true);
     setError(null);
 
     try {
-      if (!supabase) throw new Error("Connection failed");
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (authError) throw authError;
+      await signInWithEmailAndPassword(auth, email, password);
       onClose();
     } catch (err: any) {
       setError(err.message);
@@ -43,55 +38,67 @@ export default function SignInModal({ isOpen, onClose }: SignInModalProps) {
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-cream w-full max-w-sm rounded-[24px] border-2 border-taurus-gold shadow-2xl overflow-hidden relative p-8"
+        className="glass-modal w-full max-w-sm rounded-[32px] border border-white/10 shadow-2xl overflow-hidden relative p-8 backdrop-blur-3xl"
       >
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-mid-gray hover:text-charcoal transition-colors"
+          className="absolute top-6 right-6 p-2 text-cream/40 hover:text-cream transition-colors z-10"
         >
           <X className="w-6 h-6" />
         </button>
 
-        <h2 className="text-2xl font-bold text-center mb-2">Welcome Back</h2>
-        <p className="text-mid-gray text-center text-sm mb-8">Sign in to your account</p>
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="w-16 h-16 bg-taurus-gold/10 rounded-2xl flex items-center justify-center text-taurus-gold mb-6 rotate-3">
+             <ShieldCheck className="w-8 h-8" />
+          </div>
+          <h2 className="text-3xl font-black text-cream tracking-tight mb-2">Access Portal.</h2>
+          <p className="text-cream/50 text-sm font-medium">Re-initialize your frequency.</p>
+        </div>
 
         <form onSubmit={handleSignIn} className="space-y-4">
-          <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-mid-gray" />
+          <div className="relative group">
+            <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-taurus-gold/40 group-focus-within:text-taurus-gold transition-colors" />
             <input 
               required
               type="email"
-              placeholder="Email Address"
-              className="input-field pl-12"
+              placeholder="Secure Email"
+              className="input-field pl-14"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-mid-gray" />
+          <div className="relative group">
+            <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-taurus-gold/40 group-focus-within:text-taurus-gold transition-colors" />
             <input 
               required
               type="password"
-              placeholder="Password"
-              className="input-field pl-12"
+              placeholder="Access Token (Password)"
+              className="input-field pl-14"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
 
-          {error && <p className="text-clay text-xs font-medium">{error}</p>}
+          {error && <p className="text-clay text-xs font-bold uppercase tracking-wider animate-pulse pt-2 text-center">{error}</p>}
 
           <button 
             type="submit"
             disabled={loading}
-            className="btn-primary w-full flex items-center justify-center gap-2"
+            className="btn-primary w-full flex items-center justify-center gap-3 h-14 mt-6"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign In"}
+            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+              <>
+                Sign In
+                <motion.span animate={{ x: [0, 4, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+                  →
+                </motion.span>
+              </>
+            )}
           </button>
         </form>
 
-        <p className="mt-8 text-center text-xs text-mid-gray">
-          Forgot your password? <button className="text-taurus-gold font-bold hover:underline">Reset it</button>
+        <p className="mt-8 text-center text-[10px] text-cream/30 uppercase font-black tracking-widest">
+          Forgotten frequency? <button className="text-taurus-gold hover:text-white transition-colors">Reset</button>
         </p>
       </motion.div>
     </div>

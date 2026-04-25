@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitives
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+
+    // Profile Validation
+    function isValidProfile(p) {
+      return p.display_name is string && p.display_name.size() > 0 && p.display_name.size() <= 100 &&
+             (p.avatar_url == null || (p.avatar_url is string && p.avatar_url.size() <= 500)) &&
+             p.city is string && p.city.size() <= 200 &&
+             p.latitude is number && p.latitude >= -90 && p.latitude <= 90 &&
+             p.longitude is number && p.longitude >= -180 && p.longitude <= 180 &&
+             p.user_type in ['business', 'fun'] &&
+             (p.bio == null || (p.bio is string && p.bio.size() <= 500)) &&
+             p.is_visible is bool &&
+             p.tier in ['member', 'paid'];
+    }
+
+    match /profiles/{userId} {
+      allow get: if (existing().is_visible == true || isSignedIn());
+      allow list: if (existing().is_visible == true || isSignedIn());
+      
+      allow create: if isOwner(userId) &&
+                       isValidProfile(incoming()) &&
+                       incoming().created_at == request.time &&
+                       incoming().updated_at == request.time;
+      
+      allow update: if isOwner(userId) &&
+                       isValidProfile(incoming()) &&
+                       incoming().created_at == existing().created_at &&
+                       incoming().updated_at == request.time &&
+                       // Action: Profile Update
+                       (incoming().diff(existing()).affectedKeys().hasOnly([
+                         'display_name', 'avatar_url', 'city', 'latitude', 'longitude', 
+                         'user_type', 'bio', 'instagram_handle', 'twitter_handle', 
+                         'is_visible', 'updated_at'
+                       ]));
+    }
+
+    match /invite_codes/{codeId} {
+      allow read, write: if false; // System only
+    }
+
+    match /blocks/{blockId} {
+      // blocker_id, blocked_id, created_at
+      allow read: if isSignedIn() && (resource.data.blocker_id == request.auth.uid || resource.data.blocked_id == request.auth.uid);
+      allow create: if isSignedIn() && 
+                       incoming().blocker_id == request.auth.uid &&
+                       incoming().created_at == request.time;
+      allow delete: if isSignedIn() && resource.data.blocker_id == request.auth.uid;
+    }
+
+    match /messages/{messageId} {
+      // user_id, content, created_at
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && 
+                       incoming().user_id == request.auth.uid &&
+                       incoming().content is string && 
+                       incoming().content.size() > 0 && 
+                       incoming().content.size() <= 1000 &&
+                       incoming().created_at == request.time;
+    }
+
+    match /reports/{reportId} {
+      // reporter_id, reported_id, content_type, reason, status, created_at
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && 
+                       incoming().reporter_id == request.auth.uid &&
+                       incoming().reported_id is string &&
+                       incoming().reason is string &&
+                       incoming().reason.size() > 0 &&
+                       incoming().reason.size() <= 500 &&
+                       incoming().status == 'pending' &&
+                       incoming().created_at == request.time;
+      allow update: if isAdmin() && 
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+    }
+  }
+}

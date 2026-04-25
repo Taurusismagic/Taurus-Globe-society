@@ -62,8 +62,8 @@ function MainApp() {
         </div>
         
         {/* Masking and Vignette */}
-        <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_200px_rgba(5,5,5,1)]" />
-        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-space-bg via-transparent to-space-bg/50 opacity-60" />
+        <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(5,5,5,0.8)]" />
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-space-bg via-transparent to-space-bg/30 opacity-40" />
       </div>
 
       {/* 2. Navigation */}
@@ -150,20 +150,27 @@ function MainApp() {
       {!user && !authLoading && (
         <div className="absolute bottom-24 left-8 max-w-sm pointer-events-none">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="bg-space-bg/60 backdrop-blur-xl border border-taurus-gold/20 p-8 rounded-[32px] shadow-gold/20 shadow-2xl"
+            initial={{ opacity: 0, scale: 0.9, y: 30 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ delay: 0.8, type: "spring", damping: 20 }}
+            className="glass-modal border-white/10 p-10 rounded-[40px] shadow-2xl relative overflow-hidden"
           >
-            <h1 className="text-3xl font-bold text-taurus-gold text-glow mb-4 leading-tight">Claim your spot on the world stage.</h1>
-            <p className="text-cream/80 text-sm leading-relaxed mb-6 font-medium">
-              Join thousands of Taurus leaders, entrepreneurs, and dreamers in our exclusive global community.
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-taurus-gold to-transparent opacity-30" />
+            
+            <h1 className="text-3xl font-black text-taurus-gold text-glow mb-4 leading-[1.1] tracking-tight">
+              Initialize Your Frequency.
+            </h1>
+            <p className="text-cream/60 text-sm leading-relaxed mb-8 font-medium">
+              You are invited to join the sovereign tribe. Visualize the collective and claim your node on the world map.
             </p>
             <button 
               onClick={() => setIsJoinOpen(true)}
-              className="btn-primary pointer-events-auto shadow-gold"
+              className="btn-primary w-full pointer-events-auto flex items-center justify-center gap-2 group/btn"
             >
               Get Started
+              <motion.span animate={{ x: [0, 4, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+                →
+              </motion.span>
             </button>
           </motion.div>
         </div>
@@ -177,16 +184,16 @@ function ActionButton({ icon, label, onClick, active, badge }: any) {
     <button 
       onClick={onClick}
       className={cn(
-        "group relative flex items-center justify-center w-14 h-14 rounded-2xl border transition-all duration-300 backdrop-blur-md",
+        "group relative flex items-center justify-center w-14 h-14 rounded-2xl border transition-all duration-300",
         active 
           ? "bg-taurus-gold border-taurus-gold text-white shadow-lg shadow-taurus-gold/30 scale-110" 
-          : "bg-space-bg/60 border-taurus-gold/20 text-taurus-gold hover:border-taurus-gold/50 hover:bg-space-bg/80"
+          : "glass-panel border-white/5 text-taurus-gold hover:border-taurus-gold/30 hover:bg-white/10"
       )}
     >
       {icon}
       
       {/* Tooltip */}
-      <span className="absolute left-16 hidden lg:block opacity-0 group-hover:opacity-100 transition-opacity bg-cream text-charcoal text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-md border border-taurus-gold/20 whitespace-nowrap shadow-xl pointer-events-none">
+      <span className="absolute left-16 hidden lg:block opacity-0 group-hover:opacity-100 transition-opacity bg-charcoal text-cream text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-xl border border-white/5 backdrop-blur-xl whitespace-nowrap shadow-2xl pointer-events-none">
         {label}
       </span>
 

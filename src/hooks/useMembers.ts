@@ -1,62 +1,44 @@
-import React, { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { useState, useEffect, useMemo } from "react";
+import { db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
+import { handleFirestoreError, OperationType } from "@/lib/errorUtils";
 
 export function useMembers() {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { profile, blockedIds, whoBlockedMeIds } = useAuth();
 
-  const allRelatedBlockIds = React.useMemo(() => [...blockedIds, ...whoBlockedMeIds], [blockedIds, whoBlockedMeIds]);
-
-  const fetchMembers = async () => {
-    if (!supabase || supabase.isDummy) {
-      setLoading(false);
-      return;
-    }
-    let query = supabase
-      .from('profiles')
-      .select('id, display_name, latitude, longitude, user_type, avatar_url, tier')
-      .eq('is_visible', true);
-
-    if (allRelatedBlockIds.length > 0) {
-      query = query.not('id', 'in', `(${allRelatedBlockIds.join(',')})`);
-    }
-    
-    const { data } = await query;
-    
-    if (data) {
-      setMembers(data);
-    }
-    setLoading(false);
-  };
+  const allRelatedBlockIds = useMemo(() => [...blockedIds, ...whoBlockedMeIds], [blockedIds, whoBlockedMeIds]);
 
   useEffect(() => {
-    fetchMembers();
+    setLoading(true);
+    const path = 'profiles';
+    const profilesRef = collection(db, path);
+    const q = query(profilesRef, where('is_visible', '==', true));
 
-    if (!supabase || supabase.isDummy) return;
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      let filteredDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Client-side filtering for blocks (Firestore 'not-in' is limited to 10 elements)
+      if (allRelatedBlockIds.length > 0) {
+        filteredDocs = filteredDocs.filter(d => !allRelatedBlockIds.includes(d.id));
+      }
 
-    const channel = supabase.channel('members-view')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, () => {
-        fetchMembers();
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => {
-        fetchMembers();
-      })
-      .subscribe();
+      setMembers(filteredDocs);
+      setLoading(false);
+    }, (error) => {
+      setLoading(false);
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
 
-    return () => {
-      if (supabase && !supabase.isDummy) supabase.removeChannel(channel);
-    };
+    return () => unsubscribe();
   }, [allRelatedBlockIds]);
 
   const globeMarkers = members.map(m => ({
     location: [m.latitude, m.longitude] as [number, number],
-    // Visitors see smaller, translucent pins? 
-    // COBE doesn't handle opacity per-marker easily in the default shader,
-    // but we can adjust size.
     size: profile ? 0.08 : 0.04,
   }));
 
-  return { members, globeMarkers, loading, refresh: fetchMembers };
+  return { members, globeMarkers, loading };
 }
