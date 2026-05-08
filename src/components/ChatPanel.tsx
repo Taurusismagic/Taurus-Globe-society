@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Send, Lock, Sparkles, MessageCircle, MoreVertical, X, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import ReportModal from "./ReportModal";
@@ -13,12 +13,14 @@ interface ChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onUpgradeClick: () => void;
+  targetUserId?: string | null;
 }
 
-export default function ChatPanel({ isOpen, onClose, onUpgradeClick }: ChatPanelProps) {
+export default function ChatPanel({ isOpen, onClose, onUpgradeClick, targetUserId }: ChatPanelProps) {
   const { user, profile, blockedIds, whoBlockedMeIds } = useAuth();
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [chatMode, setChatMode] = useState<'global' | 'local' | 'direct'>('global');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -36,11 +38,43 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick }: ChatPanel
   const allRelatedBlockIds = useMemo(() => [...blockedIds, ...whoBlockedMeIds], [blockedIds, whoBlockedMeIds]);
 
   useEffect(() => {
+    if (targetUserId) {
+      setChatMode('direct');
+    } else {
+      setChatMode('global');
+    }
+  }, [targetUserId, isOpen]);
+
+  useEffect(() => {
     if (!isOpen || !isPaid) return;
 
-    const path = 'messages';
-    const messagesRef = collection(db, path);
-    const q = query(messagesRef, orderBy('created_at', 'desc'), limit(50));
+    let path = 'messages';
+    let messagesRef = collection(db, path);
+    let q;
+
+    if (chatMode === 'direct' && targetUserId && user) {
+      path = 'direct_messages';
+      messagesRef = collection(db, path);
+      // For direct messages, we look for both directions
+      // Simplified: one collection, composite key or just filtering
+      // Better: use a roomId or participants array
+      const participants = [user.uid, targetUserId].sort();
+      q = query(
+        messagesRef,
+        where('participants', '==', participants),
+        orderBy('created_at', 'desc'),
+        limit(50)
+      );
+    } else if (chatMode === 'local' && profile?.city) {
+      q = query(
+        messagesRef,
+        where('city', '==', profile.city),
+        orderBy('created_at', 'desc'),
+        limit(50)
+      );
+    } else {
+      q = query(messagesRef, orderBy('created_at', 'desc'), limit(50));
+    }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -70,16 +104,26 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick }: ChatPanel
 
     const msg = newMessage;
     setNewMessage("");
-    const path = 'messages';
+    const isDirect = chatMode === 'direct' && targetUserId;
+    const path = isDirect ? 'direct_messages' : 'messages';
     
     try {
-      await addDoc(collection(db, path), {
+      const data: any = {
         user_id: user.uid,
         author_name: profile.display_name,
         author_avatar: profile.avatar_url,
         content: msg,
         created_at: serverTimestamp()
-      });
+      };
+
+      if (isDirect) {
+        data.participants = [user.uid, targetUserId!].sort();
+        data.recipient_id = targetUserId;
+      } else {
+        data.city = profile.city;
+      }
+
+      await addDoc(collection(db, path), data);
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, path);
     }
@@ -121,6 +165,40 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick }: ChatPanel
           </div>
 
           <div className="flex-1 flex flex-col overflow-hidden relative">
+            {isPaid && (
+              <div className="px-8 py-4 border-b border-white/5 bg-white/[0.01] flex gap-2">
+                <button
+                  onClick={() => setChatMode('global')}
+                  className={cn(
+                    "flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                    chatMode === 'global' ? "bg-taurus-gold text-white shadow-gold" : "text-cream/40 hover:text-cream/60 bg-white/5"
+                  )}
+                >
+                  Global
+                </button>
+                <button
+                  onClick={() => setChatMode('local')}
+                  className={cn(
+                    "flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                    chatMode === 'local' ? "bg-taurus-gold text-white shadow-gold" : "text-cream/40 hover:text-cream/60 bg-white/5"
+                  )}
+                >
+                  Local ({profile?.city?.split(',')[0] || 'Unknown'})
+                </button>
+                {targetUserId && (
+                   <button
+                    onClick={() => setChatMode('direct')}
+                    className={cn(
+                      "flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                      chatMode === 'direct' ? "bg-clay text-white shadow-lg shadow-clay/20" : "text-cream/40 hover:text-cream/60 bg-white/5"
+                    )}
+                  >
+                    Direct
+                  </button>
+                )}
+              </div>
+            )}
+
             {!isPaid && (
               <div className="absolute inset-0 z-20 bg-space-bg/60 backdrop-blur-xl flex flex-col items-center justify-center p-12 text-center">
                 <motion.div 

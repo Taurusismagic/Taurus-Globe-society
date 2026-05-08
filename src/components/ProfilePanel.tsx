@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, User, MapPin, Instagram, Twitter, Edit2, Save, LogOut, CheckCircle2, ShieldCheck, ExternalLink, Ban, Unlock, AlertTriangle } from "lucide-react";
+import { X, User, MapPin, Instagram, Twitter, Edit2, Save, LogOut, CheckCircle2, ShieldCheck, ExternalLink, Ban, Unlock, AlertTriangle, MessageCircle, Camera, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc, getDoc, updateDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import ReportModal from "./ReportModal";
@@ -12,12 +13,14 @@ interface ProfilePanelProps {
   isOpen: boolean;
   onClose: () => void;
   targetId?: string;
+  onMessageClick?: (id: string) => void;
 }
 
-export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanelProps) {
+export default function ProfilePanel({ isOpen, onClose, targetId, onMessageClick }: ProfilePanelProps) {
   const { user, profile: myProfile, refreshProfile, blockedIds, whoBlockedMeIds, refreshBlocks } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [blockLoading, setBlockLoading] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -60,6 +63,23 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
     }
     fetchTargetProfile();
   }, [isOpen, targetId, user?.uid, hasBlockedMe]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setUploading(true);
+    try {
+      const storageRef = ref(storage, `avatars/${user.uid}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setEditData({ ...editData, avatar_url: url });
+    } catch (err) {
+      console.error("Upload failed", err);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -160,16 +180,27 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
                   <div className="relative group">
                     <motion.div 
                       whileHover={{ scale: 1.05 }}
-                      className="w-32 h-32 rounded-[2.5rem] bg-taurus-gold/10 border-2 border-white/10 flex items-center justify-center overflow-hidden mb-6 shadow-2xl transition-all"
+                      className="w-32 h-32 rounded-[2.5rem] bg-taurus-gold/10 border-2 border-white/10 flex items-center justify-center overflow-hidden mb-6 shadow-2xl transition-all relative"
                     >
                       {isEditing ? (
-                        <input 
-                          type="text" 
-                          placeholder="Image URL"
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                          onChange={(e) => setEditData({...editData, avatar_url: e.target.value})}
-                        />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity z-10">
+                          <Camera className="text-white w-8 h-8" />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            onChange={handleFileUpload}
+                            disabled={uploading}
+                          />
+                        </div>
                       ) : null}
+
+                      {uploading ? (
+                         <div className="absolute inset-0 flex items-center justify-center bg-space-bg/60 backdrop-blur-md z-20">
+                            <Loader2 className="w-8 h-8 text-taurus-gold animate-spin" />
+                         </div>
+                      ) : null}
+
                       {profile.is_blocked || hasBlockedMe ? (
                          <div className="w-full h-full bg-white/5 flex items-center justify-center">
                             <Lock className="w-10 h-10 text-taurus-gold/40" />
@@ -180,9 +211,11 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
                         <User className="w-14 h-14 text-taurus-gold" />
                       )}
                     </motion.div>
-                    {isOwnProfile && isEditing && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-[2px] rounded-[2.5rem] pointer-events-none border-2 border-taurus-gold animate-pulse">
-                        <Edit2 className="text-white w-8 h-8" />
+                      {isOwnProfile && isEditing && !uploading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none rounded-[2.5rem] border-2 border-taurus-gold/50 shadow-[0_0_20px_rgba(212,175,55,0.3)]">
+                         <div className="bg-taurus-gold p-2 rounded-full shadow-gold">
+                            <Camera className="text-white w-4 h-4" />
+                         </div>
                       </div>
                     )}
                   </div>
@@ -343,6 +376,14 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
                   </div>
                  ) : !hasBlockedMe && (
                   <div className="pt-10 space-y-4">
+                    <button
+                      onClick={() => onMessageClick?.(profile.id)}
+                      className="btn-primary w-full flex items-center justify-center gap-3 py-4 rounded-2xl"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      Send Signal
+                    </button>
+
                      <button
                         onClick={handleToggleBlock}
                         disabled={blockLoading}
@@ -387,6 +428,3 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
   );
 }
 
-function Loader2({ className }: { className?: string }) {
-  return <div className={cn("animate-spin rounded-full border-2 border-current border-t-transparent", className)} />;
-}

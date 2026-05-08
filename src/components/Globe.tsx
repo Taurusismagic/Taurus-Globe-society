@@ -21,9 +21,10 @@ interface GlobeProps {
   members: any[];
   targetLocation?: [number, number] | null;
   className?: string;
+  onMemberClick?: (id: string) => void;
 }
 
-export default function Globe({ members, targetLocation, className }: GlobeProps) {
+export default function Globe({ members, targetLocation, className, onMemberClick }: GlobeProps) {
   const globeEl = useRef<any>();
   const { profile: myProfile } = useAuth();
   const [countries, setCountries] = useState<any[]>([]);
@@ -121,6 +122,9 @@ export default function Globe({ members, targetLocation, className }: GlobeProps
           const isBusiness = d.user_type === 'business';
           const isPremium = d.tier === 'paid';
           
+          el.onclick = () => onMemberClick?.(d.id);
+          el.className = "cursor-pointer";
+
           el.innerHTML = `
             <div class="group relative flex items-center justify-center">
               <div class="absolute w-4 h-4 rounded-full ${isBusiness ? 'bg-forest-green' : 'bg-clay'} ${isPremium ? 'animate-pulse' : ''}"></div>

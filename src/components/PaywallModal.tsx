@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { X, Sparkles, CheckCircle2, ShieldCheck, CreditCard } from "lucide-react";
+import { X, Sparkles, CheckCircle2, ShieldCheck, CreditCard, Twitter } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
@@ -13,14 +13,14 @@ export default function PaywallModal({ isOpen, onClose }: PaywallModalProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  const handleUpgrade = async () => {
+  const handleUpgrade = async (type: 'subscription' | 'x_promotion' = 'subscription') => {
     if (!user) return;
     setLoading(true);
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.uid, email: user.email })
+        body: JSON.stringify({ userId: user.uid, email: user.email, type })
       });
       const data = await res.json();
       if (data.url) {
@@ -97,26 +97,37 @@ export default function PaywallModal({ isOpen, onClose }: PaywallModalProps) {
             </div>
           </div>
 
-          <button 
-            onClick={handleUpgrade}
-            disabled={loading}
-            className="btn-primary w-full h-16 text-lg flex items-center justify-center gap-4 relative overflow-hidden group/upgrade"
-          >
-            {loading ? (
-              <Loader2 className="w-7 h-7 animate-spin" />
-            ) : (
-              <>
-                 <CreditCard className="w-6 h-6" />
-                 <span className="font-black uppercase tracking-[0.2em] text-sm">Initialize Membership</span>
-                 <motion.div 
-                   className="absolute inset-x-0 bottom-0 h-1 bg-white/20"
-                   initial={{ x: "-100%" }}
-                   animate={{ x: "100%" }}
-                   transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                 />
-              </>
-            )}
-          </button>
+          <div className="space-y-4">
+            <button
+              onClick={() => handleUpgrade('subscription')}
+              disabled={loading}
+              className="btn-primary w-full h-16 text-lg flex items-center justify-center gap-4 relative overflow-hidden group/upgrade"
+            >
+              {loading ? (
+                <Loader2 className="w-7 h-7 animate-spin" />
+              ) : (
+                <>
+                  <CreditCard className="w-6 h-6" />
+                  <span className="font-black uppercase tracking-[0.2em] text-sm">Initialize Membership</span>
+                  <motion.div
+                    className="absolute inset-x-0 bottom-0 h-1 bg-white/20"
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "100%" }}
+                    transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                  />
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => handleUpgrade('x_promotion')}
+              disabled={loading}
+              className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center gap-3 text-cream/60 hover:text-taurus-gold hover:border-taurus-gold/30 hover:bg-taurus-gold/5 transition-all group"
+            >
+              <Twitter className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Request X.com Promotion — $49.99</span>
+            </button>
+          </div>
           
           <p className="mt-8 text-[9px] text-cream/40 uppercase tracking-[0.3em] font-black flex items-center justify-center gap-2">
             <ShieldCheck className="w-3 h-3 text-taurus-gold" />

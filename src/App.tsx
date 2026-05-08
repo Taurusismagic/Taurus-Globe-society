@@ -25,6 +25,7 @@ function MainApp() {
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [targetProfileId, setTargetProfileId] = useState<string | undefined>(undefined);
+  const [chatTargetId, setChatTargetId] = useState<string | null>(null);
 
   // Globe Flight State
   const [targetLocation, setTargetLocation] = useState<[number, number] | null>(null);
@@ -37,6 +38,11 @@ function MainApp() {
   const openProfile = (id?: string) => {
     setTargetProfileId(id);
     setIsProfileOpen(true);
+  };
+
+  const openChat = (targetId?: string) => {
+    setChatTargetId(targetId || null);
+    setIsChatOpen(true);
   };
 
   return (
@@ -56,6 +62,7 @@ function MainApp() {
                 members={members} 
                 targetLocation={targetLocation}
                 className="opacity-100"
+                onMemberClick={openProfile}
               />
             </div>
           </div>
@@ -78,7 +85,7 @@ function MainApp() {
         <ActionButton 
           icon={<MessageCircle />} 
           label="Tribe Chat" 
-          onClick={() => setIsChatOpen(true)}
+          onClick={() => openChat()}
           active={isChatOpen}
           badge={profile?.tier === 'paid' ? undefined : "Lock"}
         />
@@ -120,12 +127,20 @@ function MainApp() {
             isOpen={isProfileOpen} 
             onClose={() => setIsProfileOpen(false)} 
             targetId={targetProfileId}
+            onMessageClick={(id) => {
+              setIsProfileOpen(false);
+              openChat(id);
+            }}
           />
         )}
         {isChatOpen && (
           <ChatPanel 
             isOpen={isChatOpen} 
-            onClose={() => setIsChatOpen(false)} 
+            onClose={() => {
+              setIsChatOpen(false);
+              setChatTargetId(null);
+            }}
+            targetUserId={chatTargetId}
             onUpgradeClick={() => {
               setIsChatOpen(false);
               setIsPaywallOpen(true);

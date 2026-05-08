@@ -60,13 +60,24 @@ async function startServer() {
       case 'checkout.session.completed':
         const session = event.data.object as any;
         const userId = session.metadata.user_id;
+        const purchaseType = session.metadata.purchase_type;
+
         if (userId) {
-          await firestore.collection('profiles').doc(userId).update({
-            tier: 'paid',
-            stripe_customer_id: session.customer,
-            stripe_subscription_id: session.subscription,
-            updated_at: admin.firestore.FieldValue.serverTimestamp()
-          });
+          if (purchaseType === 'x_promotion') {
+             await firestore.collection('promotion_requests').add({
+                user_id: userId,
+                status: 'pending',
+                stripe_session_id: session.id,
+                created_at: admin.firestore.FieldValue.serverTimestamp()
+             });
+          } else {
+            await firestore.collection('profiles').doc(userId).update({
+              tier: 'paid',
+              stripe_customer_id: session.customer,
+              stripe_subscription_id: session.subscription,
+              updated_at: admin.firestore.FieldValue.serverTimestamp()
+            });
+          }
         }
         break;
       case 'customer.subscription.deleted':
@@ -174,24 +185,26 @@ async function startServer() {
 
   // API: Stripe Checkout
   app.post('/api/stripe/checkout', async (req, res) => {
-    const { userId, email } = req.body;
+    const { userId, email, type = 'subscription' } = req.body;
     if (!stripe) return res.status(500).json({ error: 'Stripe not configured' });
 
     try {
+      const isPromo = type === 'x_promotion';
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         line_items: [
           {
-            price: process.env.STRIPE_PRICE_ID,
+            price: isPromo ? process.env.STRIPE_X_PROMO_PRICE_ID : process.env.STRIPE_PRICE_ID,
             quantity: 1,
           },
         ],
-        mode: 'subscription',
+        mode: isPromo ? 'payment' : 'subscription',
         success_url: `${process.env.APP_URL || 'http://localhost:3000'}/?payment=success`,
         cancel_url: `${process.env.APP_URL || 'http://localhost:3000'}/?payment=cancelled`,
         customer_email: email,
         metadata: {
           user_id: userId,
+          purchase_type: type
         },
       });
 
