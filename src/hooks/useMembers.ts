@@ -15,17 +15,19 @@ export function useMembers() {
     setLoading(true);
     const path = 'profiles';
     const profilesRef = collection(db, path);
+    // Only show people who are visible and NOT banned
     const q = query(profilesRef, where('is_visible', '==', true));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      let filteredDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const uniqueMap = new Map();
+      snapshot.docs.forEach(doc => {
+        const data = doc.data() as any;
+        if (!data.is_banned && (!allRelatedBlockIds.length || !allRelatedBlockIds.includes(doc.id))) {
+          uniqueMap.set(doc.id, { id: doc.id, ...data });
+        }
+      });
       
-      // Client-side filtering for blocks (Firestore 'not-in' is limited to 10 elements)
-      if (allRelatedBlockIds.length > 0) {
-        filteredDocs = filteredDocs.filter(d => !allRelatedBlockIds.includes(d.id));
-      }
-
-      setMembers(filteredDocs);
+      setMembers(Array.from(uniqueMap.values()));
       setLoading(false);
     }, (error) => {
       setLoading(false);
@@ -35,10 +37,10 @@ export function useMembers() {
     return () => unsubscribe();
   }, [allRelatedBlockIds]);
 
-  const globeMarkers = members.map(m => ({
+  const globeMarkers = useMemo(() => members.map(m => ({
     location: [m.latitude, m.longitude] as [number, number],
     size: profile ? 0.08 : 0.04,
-  }));
+  })), [members, profile]);
 
   return { members, globeMarkers, loading };
 }

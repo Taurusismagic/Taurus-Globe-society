@@ -44,7 +44,7 @@ export default function ReportModal({ isOpen, onClose, targetId, contentType, co
       // Get target profile name
       const targetDoc = await getDoc(doc(db, 'profiles', targetId));
       const targetName = targetDoc.exists() ? targetDoc.data().display_name : "Unknown";
-      const myName = (user as any).displayName || "Taurus Member"; // Or from profile context if available
+      const myName = (user as any).displayName || "Cosmic Member";
 
       await addDoc(collection(db, 'reports'), {
         reporter_id: user.uid,
@@ -95,32 +95,32 @@ export default function ReportModal({ isOpen, onClose, targetId, contentType, co
           <div className="w-16 h-16 bg-clay/10 rounded-2xl flex items-center justify-center text-clay mb-6 rotate-3">
             <AlertTriangle className="w-8 h-8" />
           </div>
-          <h2 className="text-3xl font-black text-cream tracking-tight mb-2">Flag Signal.</h2>
+          <h2 className="text-3xl font-black text-cream tracking-tight mb-2">Report Content.</h2>
           <p className="text-cream/50 text-sm font-medium">
-            Help us sanitize the Taurus nexus.
+            Help us keep the community safe.
           </p>
         </div>
 
         <AnimatePresence mode="wait">
           {success ? (
             <motion.div
-              key="success"
+              key="report-success"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center justify-center py-10 text-center"
             >
               <CheckCircle2 className="w-16 h-16 text-forest-green mb-6" />
-              <h3 className="text-2xl font-black text-cream tracking-tight">Report Logged.</h3>
-              <p className="text-cream/40 text-sm font-medium">Your report has been logged in the secure vault for review.</p>
+              <h3 className="text-2xl font-black text-cream tracking-tight">Report Sent.</h3>
+              <p className="text-cream/40 text-sm font-medium">Thank you for your report. Our team will review it shortly.</p>
             </motion.div>
           ) : (
             <motion.form 
-              key="form"
+              key="report-form"
               onSubmit={handleSubmit} 
               className="space-y-6"
             >
               <div>
-                <label className="block text-[10px] font-black text-taurus-gold uppercase tracking-[0.2em] mb-3 ml-1">Detection Reason</label>
+                <label className="block text-[10px] font-black text-taurus-gold uppercase tracking-[0.2em] mb-3 ml-1">Report Reason</label>
                 <select
                   required
                   value={reason}
@@ -128,19 +128,19 @@ export default function ReportModal({ isOpen, onClose, targetId, contentType, co
                   className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-cream focus:border-clay outline-none transition-all"
                 >
                   <option value="" className="bg-charcoal text-cream">Select a reason...</option>
-                  {REASONS.map(r => (
-                    <option key={r} value={r} className="bg-charcoal text-cream">{r}</option>
+                  {REASONS.map((r) => (
+                    <option key={`report-reason-${r.replace(/\s+/g, '-').toLowerCase()}`} value={r} className="bg-charcoal text-cream">{r}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-taurus-gold uppercase tracking-[0.2em] mb-3 ml-1">Intel Breakdown (Optional)</label>
+                <label className="block text-[10px] font-black text-taurus-gold uppercase tracking-[0.2em] mb-3 ml-1">Additional Details (Optional)</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm text-cream min-h-[120px] focus:border-clay outline-none transition-all placeholder:text-cream/20"
-                  placeholder="Provide more evidence..."
+                  placeholder="Tell us what's wrong..."
                 />
               </div>
 
@@ -157,7 +157,7 @@ export default function ReportModal({ isOpen, onClose, targetId, contentType, co
                 ) : (
                   <>
                     <Send className="w-5 h-5 shadow-lg" />
-                    Submit Signal
+                    Submit Report
                   </>
                 )}
               </button>

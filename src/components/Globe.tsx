@@ -1,74 +1,146 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import GlobeGL from "react-globe.gl";
 import { useMembers } from "@/hooks/useMembers";
 import { useAuth } from "@/context/AuthContext";
 
-// Simple point-in-polygon for country detection
-function isPointInPoly(poly: any, pt: [number, number]) {
-  const [lng, lat] = pt;
-  let inside = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const xi = poly[i][0], yi = poly[i][1];
-    const xj = poly[j][0], yj = poly[j][1];
-    const intersect = ((yi > lat) !== (yj > lat))
-        && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
-    if (intersect) inside = !inside;
-  }
-  return inside;
-}
-
 interface GlobeProps {
   members: any[];
   targetLocation?: [number, number] | null;
+  onGlobeClick?: (lat: number, lng: number) => void;
+  onboardingPins?: Array<{ lat: number; lng: number; label: string; color: string }>;
   className?: string;
 }
 
-export default function Globe({ members, targetLocation, className }: GlobeProps) {
+const Globe = React.memo(({ members, targetLocation, onGlobeClick, onboardingPins, className }: GlobeProps) => {
   const globeEl = useRef<any>();
-  const { profile: myProfile } = useAuth();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  // Optimize renderer config
+  const rendererConfig = useMemo(() => ({
+    antialias: window.devicePixelRatio < 2,
+    alpha: true,
+    powerPreference: "high-performance" as const
+  }), []);
+
+  // Handle resize
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setDimensions({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height
+        });
+      }
+    });
+
+    resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
+  }, []);
+
   const [countries, setCountries] = useState<any[]>([]);
-  const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
 
-  const [selectedCountry, setSelectedCountry] = useState<any>(null);
-
-  // Load GeoJSON for countries
+  // Load GeoJSON for countries and pre-calculate labels
   useEffect(() => {
     fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
       .then(res => res.json())
-      .then(data => setCountries(data.features));
+      .then(data => {
+        const featuresWithLabels = data.features.map((f: any, idx: number) => {
+          let minX = 180, minY = 90, maxX = -180, maxY = -90;
+          const traverse = (c: any) => {
+            if (Array.isArray(c[0])) c.forEach(traverse);
+            else {
+              minX = Math.min(minX, c[0]); maxX = Math.max(maxX, c[0]);
+              minY = Math.min(minY, c[1]); maxY = Math.max(maxY, c[1]);
+            }
+          };
+          traverse(f.geometry.coordinates);
+          
+          const props = f.properties;
+          const name = props.name || props.NAME || props.ADMIN || props.admin || "";
+          const baseId = props.id || props.iso_a3 || props.ISO_A3 || `region-${idx}`;
+          const id = `${baseId}-${name.replace(/\s+/g, '-').toLowerCase()}-${idx}`;
+          const area = (maxX - minX) * (maxY - minY);
+
+          return {
+            lat: (minY + maxY) / 2,
+            lng: (minX + maxX) / 2,
+            name,
+            id,
+            area
+          };
+        })
+        .filter((l: any) => l.name && l.area > 5)
+        .sort((a: any, b: any) => b.area - a.area);
+
+        setCountries(featuresWithLabels);
+      });
   }, []);
 
-  // Calculate country member density for heatmap
-  const tribeStats = useMemo(() => {
-    const stats: Record<string, { count: number, business: number, fun: number }> = {};
-    if (!countries.length || !members.length) return stats;
+  // Memoize labels and points to prevent recalculation on every re-render
+  const data = useMemo(() => {
+    if (!countries.length) return { points: [], labels: [] };
 
-    members.forEach(m => {
-      // Find country for this member
-      const country = countries.find(c => {
-        if (c.geometry.type === 'Polygon') {
-          return isPointInPoly(c.geometry.coordinates[0], [m.longitude, m.latitude]);
-        } else if (c.geometry.type === 'MultiPolygon') {
-          return c.geometry.coordinates.some((poly: any) => isPointInPoly(poly[0], [m.longitude, m.latitude]));
-        }
-        return false;
-      });
+    const attractors = [
+      { lat: 40.7128, lng: -74.0060 }, // NYC
+      { lat: 51.5074, lng: -0.1278 },  // London
+      { lat: 35.6762, lng: 139.6503 }, // Tokyo
+      { lat: 48.8566, lng: 2.3522 },   // Paris
+      { lat: 25.2048, lng: 55.2708 },  // Dubai
+      { lat: 1.3521, lng: 103.8198 },  // Singapore
+      { lat: 19.0760, lng: 72.8777 },  // Mumbai
+      { lat: 31.2304, lng: 121.4737 }, // Shanghai
+      { lat: -23.5505, lng: -46.6333 },// Sao Paulo
+      { lat: 6.5244, lng: 3.3792 },    // Lagos
+      { lat: -33.8688, lng: 151.2093 },// Sydney
+      { lat: 19.4326, lng: -99.1332 }, // CDMX
+      { lat: -1.2921, lng: 36.8219 },  // Nairobi
+      { lat: 30.0444, lng: 31.2357 },  // Cairo
+      { lat: 37.5665, lng: 126.9780 }, // Seoul
+      { lat: 34.0522, lng: -118.2437 },// LA
+      { lat: 55.7558, lng: 37.6173 },  // Moscow
+      { lat: -34.6037, lng: -58.3816 },// BA
+      { lat: 39.9042, lng: 116.4074 }, // Beijing
+      { lat: 28.6139, lng: 77.2090 },  // Delhi
+      { lat: -26.2041, lng: 28.0473 }, // Johannesburg
+      { lat: 43.6532, lng: -79.3832 }, // Toronto
+      { lat: 34.6937, lng: 135.5023 }, // Osaka
+      { lat: -37.8136, lng: 144.9631 },// Melbourne
+      { lat: 14.5995, lng: 120.9842 }, // Manila
+      { lat: 6.4654, lng: 3.4064 },    // Lagos (extra density)
+    ];
 
-      if (country) {
-        const id = country.properties.ISO_A3;
-        if (!stats[id]) stats[id] = { count: 0, business: 0, fun: 0 };
-        stats[id].count++;
-        if (m.user_type === 'business') stats[id].business++;
-        else stats[id].fun++;
+    const labels = countries.slice(0, 40); // Only show top 40 major regions for that "glint" look
+
+    const pts: Array<{ lat: number; lng: number; color: string }> = [];
+    
+    // Create clusters around attractors
+    attractors.forEach(attractor => {
+      // Create a dense core and then a sparser "square" grid around it
+      const clusterSize = 20 + Math.floor(Math.random() * 30);
+      for (let i = 0; i < clusterSize; i++) {
+        // Grid-like jitter for the "square" cluster look
+        const gridSize = 1.5;
+        const gridX = Math.round((Math.random() - 0.5) * 10);
+        const gridY = Math.round((Math.random() - 0.5) * 10);
+        
+        const lat = attractor.lat + gridY * (gridSize / 2) + (Math.random() - 0.5) * 0.4;
+        const lng = attractor.lng + gridX * (gridSize / 2) + (Math.random() - 0.5) * 0.4;
+        
+        pts.push({
+          lat,
+          lng,
+          color: Math.random() > 0.1 ? '#D4AF37' : '#FF1493'
+        });
       }
     });
-    return stats;
-  }, [countries, members]);
 
-  const selectedStats = useMemo(() => {
-    if (!selectedCountry) return null;
-    return tribeStats[selectedCountry.properties.ISO_A3] || { count: 0, business: 0, fun: 0 };
-  }, [selectedCountry, tribeStats]);
+    return { points: pts, labels };
+  }, [countries]);
+
+  const { points: backgroundPoints } = data;
 
   // Handle fly-to
   useEffect(() => {
@@ -81,141 +153,75 @@ export default function Globe({ members, targetLocation, className }: GlobeProps
     }
   }, [targetLocation]);
 
-  const maxDensity = Math.max(...Object.values(tribeStats).map((s: any) => s.count), 1);
+  const onGlobeReady = useCallback(() => {
+    if (globeEl.current) {
+      const controls = globeEl.current.controls();
+      controls.enableZoom = true;
+      controls.enablePan = true;
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.rotateSpeed = 1.8;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.3;
+    }
+  }, []);
+
+  const htmlElements = useMemo(() => {
+    const uniqueMap = new Map();
+    members.forEach((m, index) => {
+      const baseId = m.id || m.uid || `m-${index}`;
+      const uniqueId = `globe-marker-${baseId}`;
+      if (!uniqueMap.has(uniqueId)) {
+        uniqueMap.set(uniqueId, { ...m, uniqueId });
+      }
+    });
+    return Array.from(uniqueMap.values());
+  }, [members]);
+
+  const generateHtmlElement = useCallback((d: any) => {
+    const el = document.createElement('div');
+    // Ensure element has a predictable class for internal tracking if needed
+    el.className = 'globe-html-marker';
+    const signalColor = d.user_type === 'business' ? '#FF1493' : '#D4AF37'; 
+    el.innerHTML = `
+      <div class="group relative flex items-center justify-center cursor-pointer">
+        <div class="w-2.5 h-2.5 rounded-full relative z-10" style="background-color: ${signalColor}; box-shadow: 0 0 15px ${signalColor};"></div>
+        <div class="absolute inset-0 w-8 h-8 -left-2.5 -top-2.5 rounded-full animate-ping opacity-10" style="background-color: ${signalColor};"></div>
+      </div>
+    `;
+    return el;
+  }, []);
 
   return (
-    <div className={`relative w-full h-full ${className}`}>
+    <div ref={containerRef} className={`relative w-full h-full bg-transparent animate-fade-in ${className}`}>
       <GlobeGL
         ref={globeEl}
+        onGlobeReady={onGlobeReady}
+        width={dimensions.width}
+        height={dimensions.height}
         backgroundColor="rgba(0,0,0,0)"
         showAtmosphere={true}
-        atmosphereColor="#D4AF37"
-        atmosphereAltitude={0.15}
+        atmosphereColor="#ffffff"
+        atmosphereAltitude={0.2}
+        rendererConfig={rendererConfig}
         
-        // Country Heatmap (Glint style)
-        polygonsData={countries}
-        polygonCapColor={(d: any) => {
-          const stats = tribeStats[d.properties.ISO_A3];
-          if (!stats) return 'rgba(212, 175, 55, 0.08)';
-          const intensity = stats.count / maxDensity;
-          return `rgba(212, 175, 55, ${0.2 + intensity * 0.7})`;
-        }}
-        polygonSideColor={() => 'rgba(0, 0, 0, 0)'}
-        polygonStrokeColor={(d: any) => 
-          d.properties.ISO_A3 === hoveredCountry || d.properties.ISO_A3 === selectedCountry?.properties?.ISO_A3 ? '#F5E6C0' : 'rgba(212, 175, 55, 0.2)'
-        }
-        polygonLabel={(d: any) => `
-           <div class="bg-space-bg/90 border border-taurus-gold/30 p-2 rounded-lg text-[10px] uppercase font-black text-taurus-gold">
-             ${d.properties.ADMIN} | ${tribeStats[d.properties.ISO_A3]?.count || 0} Members
-           </div>
-        `}
-        onPolygonHover={(d: any) => setHoveredCountry(d ? d.properties.ISO_A3 : null)}
-        onPolygonClick={(d: any) => setSelectedCountry(d)}
+        globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
+        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+
+        htmlElementsData={htmlElements}
+        htmlElementKey="uniqueId"
+        htmlLat={(d: any) => d.latitude || d.lat}
+        htmlLng={(d: any) => d.longitude || d.lng}
+        htmlElement={generateHtmlElement}
         
-        // Member Markers (Custom HTML glint-style)
-        htmlElementsData={members}
-        htmlLat={(d: any) => d.latitude}
-        htmlLng={(d: any) => d.longitude}
-        htmlElement={(d: any) => {
-          const el = document.createElement('div');
-          const isBusiness = d.user_type === 'business';
-          const isPremium = d.tier === 'paid';
-          
-          el.innerHTML = `
-            <div class="group relative flex items-center justify-center">
-              <div class="absolute w-4 h-4 rounded-full ${isBusiness ? 'bg-forest-green' : 'bg-clay'} ${isPremium ? 'animate-pulse' : ''}"></div>
-              <div class="w-1.5 h-1.5 rounded-full bg-taurus-gold shadow-gold"></div>
-              
-              <!-- Tooltip (Detailed Intel) -->
-              <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <div class="bg-space-bg/90 backdrop-blur-md border border-taurus-gold/30 p-3 rounded-xl whitespace-nowrap shadow-2xl">
-                  <div class="text-[10px] font-black uppercase tracking-widest text-taurus-gold mb-1">Taurus Detected</div>
-                  <div class="text-sm font-bold text-cream">${d.display_name}</div>
-                  <div class="flex items-center gap-2 mt-1">
-                    <span class="text-[9px] px-1.5 py-0.5 rounded ${isBusiness ? 'bg-forest-green/20 text-light-green' : 'bg-clay/20 text-clay'} font-bold uppercase">
-                      ${isBusiness ? 'Entrepreneur' : 'Community'}
-                    </span>
-                    ${isPremium ? '<span class="text-[9px] bg-taurus-gold text-white px-1.5 py-0.5 rounded font-bold uppercase">Premium</span>' : ''}
-                  </div>
-                </div>
-              </div>
-            </div>
-          `;
-          return el;
-        }}
-        enablePointerInteraction={true}
+        enablePointerInteraction={false}
+        autoRotate={true}
+        autoRotateSpeed={0.4}
       />
 
-      {/* Selected Country Intel Card (Glint Inspired) */}
-      {selectedCountry && (
-        <div className="absolute top-10 right-10 z-20 w-72">
-           <div className="bg-space-bg/80 backdrop-blur-xl border-2 border-taurus-gold/40 rounded-2xl overflow-hidden shadow-2xl animate-in fade-in slide-in-from-right-4 duration-500">
-              <div className="p-5 border-b border-taurus-gold/20 flex justify-between items-center">
-                 <div>
-                    <div className="text-[10px] font-black text-taurus-gold uppercase tracking-widest mb-1">Regional Intel</div>
-                    <div className="text-xl font-bold text-cream leading-none tracking-tight">{selectedCountry.properties.ADMIN}</div>
-                 </div>
-                 <button onClick={() => setSelectedCountry(null)} className="p-1 hover:bg-taurus-gold/10 rounded-full transition-colors text-taurus-gold">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                 </button>
-              </div>
-              <div className="p-5 space-y-6">
-                 <div>
-                    <div className="text-[9px] font-black text-taurus-gold/60 uppercase tracking-[0.2em] mb-3">Tribe Composition</div>
-                    <div className="grid grid-cols-2 gap-3">
-                       <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                          <div className="text-2xl font-black text-cream">{selectedStats?.count || 0}</div>
-                          <div className="text-[8px] font-bold text-cream/40 uppercase tracking-widest mt-1">Total Members</div>
-                       </div>
-                       <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                          <div className="text-2xl font-black text-forest-green">{selectedStats?.business || 0}</div>
-                          <div className="text-[8px] font-bold text-forest-green/60 uppercase tracking-widest mt-1">Leaders</div>
-                       </div>
-                    </div>
-                 </div>
-                 
-                 <div className="pt-2">
-                    <div className="text-[9px] font-black text-taurus-gold/60 uppercase tracking-[0.2em] mb-2">Tribe Activity Level</div>
-                    <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-                       <div 
-                        className="h-full bg-taurus-gold shadow-gold animate-pulse" 
-                        style={{ width: `${Math.min(((selectedStats?.count || 0) / maxDensity) * 100, 100)}%` }}
-                       ></div>
-                    </div>
-                 </div>
-              </div>
-              <div className="p-4 bg-taurus-gold/5 flex justify-center">
-                 <button className="text-[10px] font-black uppercase tracking-widest text-taurus-gold hover:text-light-gold transition-colors">
-                    Access Local Database →
-                 </button>
-              </div>
-           </div>
-        </div>
-      )}
-
-      {/* Tribe Intel Overlay (Legend) */}
-      <div className="absolute bottom-10 right-10 z-10 pointer-events-none">
-        <div className="bg-space-bg/60 backdrop-blur-lg border border-taurus-gold/20 p-5 rounded-2xl shadow-gold/10">
-          <div className="text-[10px] font-black text-taurus-gold uppercase tracking-[0.2em] mb-3">Tribe Density Index</div>
-          <div className="flex flex-col gap-3">
-             <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-taurus-gold shadow-gold"></div>
-                <span className="text-[11px] font-bold text-cream/70 uppercase">Member Node</span>
-             </div>
-             <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-forest-green shadow-[0_0_10px_rgba(45,80,22,0.5)]"></div>
-                <span className="text-[11px] font-bold text-cream/70 uppercase">Business Leader</span>
-             </div>
-             <div className="w-full h-1 bg-gradient-to-r from-taurus-gold/10 to-taurus-gold rounded-full mt-1"></div>
-             <div className="flex justify-between text-[8px] text-taurus-gold font-bold uppercase tracking-widest">
-                <span>Low Activity</span>
-                <span>Tribe Stronghold</span>
-             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute inset-0 pointer-events-none globe-vignette opacity-50" />
+      <div className="absolute inset-0 pointer-events-none globe-vignette opacity-40" />
     </div>
   );
-}
+});
+
+export default Globe;

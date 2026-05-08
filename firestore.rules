@@ -47,6 +47,16 @@ service cloud.firestore {
                          'user_type', 'bio', 'instagram_handle', 'twitter_handle', 
                          'is_visible', 'updated_at'
                        ]));
+
+      match /notifications/{notificationId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && incoming().created_at == request.time;
+        allow update: if isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['is_read']);
+      }
+
+      match /preferences/notifications {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     match /invite_codes/{codeId} {
@@ -86,6 +96,50 @@ service cloud.firestore {
                        incoming().created_at == request.time;
       allow update: if isAdmin() && 
                        incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+    }
+
+    // Waitlist Validation
+    function isValidWaitlist(w) {
+      return w.email is string && w.email.size() <= 200 &&
+             w.latitude is number && w.longitude is number &&
+             (w.user_type == 'business' || w.user_type == 'fun') &&
+             w.status == 'pending' &&
+             w.created_at == request.time;
+    }
+
+    match /waitlist/{id} {
+      allow create: if isValidWaitlist(incoming());
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Lead Validation
+    function isValidLead(l) {
+      return l.email is string && l.email.size() > 0 && l.email.size() <= 200 &&
+             l.pins is list && l.pins.size() <= 10 &&
+             l.created_at == request.time;
+    }
+
+    match /leads/{leadId} {
+      allow create: if isValidLead(incoming());
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Anonymous Chat Validation
+    function isValidAnonymousMessage(m) {
+      return m.text is string && m.text.size() > 0 && m.text.size() <= 500 &&
+             m.senderName is string && m.senderName.size() <= 100 &&
+             m.senderColor is string && m.senderColor.size() <= 32 &&
+             m.timestamp == request.time;
+    }
+
+    match /anonymous_chat/{messageId} {
+      allow list: if true;
+      allow get: if true;
+      allow create: if isValidAnonymousMessage(incoming());
+    }
+
+    match /daily_horoscopes/{dateId} {
+      allow read, write: if true; 
     }
   }
 }

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut as firebaseSignOut } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
@@ -17,6 +17,7 @@ interface Profile {
   twitter_handle: string | null;
   is_visible: boolean;
   tier: 'member' | 'paid';
+  is_banned?: boolean;
 }
 
 interface AuthContextType {
@@ -53,8 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const blockedMeQuery = query(collection(db, path), where('blocked_id', '==', uid));
       const blockedMeSnap = await getDocs(blockedMeQuery);
 
-      setBlockedIds(myBlocksSnap.docs.map(doc => doc.data().blocked_id));
-      setWhoBlockedMeIds(blockedMeSnap.docs.map(doc => doc.data().blocker_id));
+      setBlockedIds(Array.from(new Set(myBlocksSnap.docs.map(doc => doc.data().blocked_id))));
+      setWhoBlockedMeIds(Array.from(new Set(blockedMeSnap.docs.map(doc => doc.data().blocker_id))));
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, path);
     }
@@ -66,7 +67,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const docRef = doc(db, 'profiles', uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setProfile({ id: docSnap.id, ...docSnap.data() } as Profile);
+        const data = docSnap.data() as Profile;
+        if (data.is_banned) {
+          await firebaseSignOut(auth);
+          setProfile(null);
+          setUser(null);
+          return;
+        }
+        setProfile({ id: docSnap.id, ...data } as Profile);
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.GET, path);
@@ -93,22 +101,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await firebaseSignOut(auth);
-  };
+  }, []);
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user) await fetchProfile(user.uid);
-  };
+  }, [user]);
 
-  const refreshBlocks = async () => {
+  const refreshBlocks = useCallback(async () => {
     if (user) await fetchBlocks(user.uid);
-  };
+  }, [user]);
 
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  const isAdmin = useMemo(() => user?.email === ADMIN_EMAIL, [user?.email]);
+
+  const value = useMemo(() => ({ 
+    user, 
+    profile, 
+    blockedIds, 
+    whoBlockedMeIds, 
+    loading, 
+    signOut, 
+    refreshProfile, 
+    refreshBlocks, 
+    isAdmin 
+  }), [user, profile, blockedIds, whoBlockedMeIds, loading, signOut, refreshProfile, refreshBlocks, isAdmin]);
 
   return (
-    <AuthContext.Provider value={{ user, profile, blockedIds, whoBlockedMeIds, loading, signOut, refreshProfile, refreshBlocks, isAdmin }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

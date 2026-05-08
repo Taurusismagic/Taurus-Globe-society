@@ -74,12 +74,100 @@
         "created_at": { "type": "string", "format": "date-time" }
       },
       "required": ["reporter_id", "reported_id", "content_type", "reason", "status", "created_at"]
+    },
+    "Waitlist": {
+      "title": "Waitlist Entry",
+      "description": "Access request for the platform.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "chat1_lat": { "type": ["number", "null"] },
+        "chat1_lng": { "type": ["number", "null"] },
+        "chat2_lat": { "type": ["number", "null"] },
+        "chat2_lng": { "type": ["number", "null"] },
+        "user_type": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "latitude", "longitude", "status", "created_at"]
+    },
+    "leads": {
+      "title": "Lead",
+      "description": "Captured emails from the onboarding funnel",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "pins": { 
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "lat": { "type": "number" },
+              "lng": { "type": "number" }
+            }
+          }
+        },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "created_at"]
+    },
+    "AnonymousMessage": {
+      "title": "Anonymous Message",
+      "description": "Messages sent through the cinematic chat.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "senderName": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "senderName", "timestamp"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app alerts for users.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["system", "message", "task", "update"] },
+        "is_read": { "type": "boolean" },
+        "link": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "message", "type", "is_read", "created_at"]
+    },
+    "NotificationPreferences": {
+      "title": "Notification Preferences",
+      "description": "User settings for notifications.",
+      "type": "object",
+      "properties": {
+        "system_enabled": { "type": "boolean" },
+        "message_enabled": { "type": "boolean" },
+        "task_enabled": { "type": "boolean" },
+        "update_enabled": { "type": "boolean" },
+        "email_digest": { "type": "boolean" }
+      },
+      "required": ["system_enabled", "message_enabled", "task_enabled", "update_enabled"]
     }
   },
   "firestore": {
+    "/leads/{leadId}": {
+      "schema": "leads",
+      "description": "Collection of emails from the nexus funnel"
+    },
     "profiles/{userId}": {
       "schema": "Profile",
       "description": "User profiles."
+    },
+    "profiles/{userId}/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Per-user notifications."
+    },
+    "profiles/{userId}/preferences/notifications": {
+      "schema": "NotificationPreferences",
+      "description": "User notification settings."
     },
     "invite_codes/{codeId}": {
       "schema": "InviteCode",
@@ -93,9 +181,17 @@
       "schema": "Message",
       "description": "Global chat messages."
     },
-    "reports/{reportId}": {
+    "reports": {
       "schema": "Report",
       "description": "Moderation reports."
+    },
+    "waitlist/{id}": {
+      "schema": "Waitlist",
+      "description": "Access requests for the nexus."
+    },
+    "anonymous_chat/{messageId}": {
+      "schema": "AnonymousMessage",
+      "description": "Anonymous messages for the cinematic chat."
     }
   }
 }

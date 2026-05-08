@@ -1,26 +1,44 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, User, MapPin, Instagram, Twitter, Edit2, Save, LogOut, CheckCircle2, ShieldCheck, ExternalLink, Ban, Unlock, AlertTriangle } from "lucide-react";
+import { X, User, MapPin, Instagram, Twitter, Edit2, Save, LogOut, CheckCircle2, ShieldCheck, ExternalLink, Ban, Unlock, AlertTriangle, Lock, Send } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import ReportModal from "./ReportModal";
 import { handleFirestoreError, OperationType } from "@/lib/errorUtils";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface ProfilePanelProps {
+  key?: string;
   isOpen: boolean;
   onClose: () => void;
   targetId?: string;
 }
 
 export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanelProps) {
-  const { user, profile: myProfile, refreshProfile, blockedIds, whoBlockedMeIds, refreshBlocks } = useAuth();
+  const { user, profile: myProfile, refreshProfile, blockedIds, whoBlockedMeIds, refreshBlocks, signOut } = useAuth();
+  const { sendMockNotification } = useNotifications();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [blockLoading, setBlockLoading] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
+
+  const handleTestNotification = () => {
+    const types: any[] = ['system', 'message', 'task', 'update'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const titles = ["Planetary Drift", "Telepathy Sync", "Mission Update", "Nexus Pulse"];
+    const title = titles[Math.floor(Math.random() * titles.length)];
+    const messages = [
+      "A shift in Taurus gravity has been detected.",
+      "Another member of the tribe reached out to your frequency.",
+      "Your daily manifestation task is ready for review.",
+      "A new spiritual patch has been applied to the Nexus."
+    ];
+    const message = messages[Math.floor(Math.random() * messages.length)];
+    sendMockNotification(type, title, message);
+  };
   
   // Edit state
   const [editData, setEditData] = useState<any>({});
@@ -112,12 +130,11 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <AnimatePresence>
+    <>
       <div className="fixed inset-0 z-[110] flex justify-end pointer-events-none">
         <motion.div 
+          key="profile-backdrop"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -126,25 +143,26 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
         />
         
         <motion.div
+          key="profile-panel"
           initial={{ x: "100%" }}
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-           className="relative w-full max-w-[420px] glass-panel h-full border-l border-white/5 shadow-2xl flex flex-col pointer-events-auto"
+           className="relative w-full md:max-w-[420px] glass-panel h-full border-l border-white/5 shadow-2xl flex flex-col pointer-events-auto overscroll-behavior-contain"
         >
-          <div className="p-8 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
+          <div className="p-5 md:p-8 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
             <div>
-              <h2 className="font-black text-2xl text-taurus-gold tracking-tighter">
-                {isOwnProfile ? "Sovereign Identity" : "Member Proxy"}
+              <h2 className="font-black text-xl md:text-2xl text-taurus-gold tracking-tighter">
+                {isOwnProfile ? "My Profile" : "Member Profile"}
               </h2>
-              <p className="text-[10px] text-cream/40 uppercase font-black tracking-widest mt-1">Verified Frequency</p>
+              <p className="text-[10px] text-cream/40 uppercase font-black tracking-widest mt-1">Verified Member</p>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-all text-cream/40 hover:text-cream">
               <X className="w-6 h-6" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-10 scrollbar-hide">
+          <div className="flex-1 overflow-y-auto p-6 md:p-10 scrollbar-hide pb-[calc(1.5rem+env(safe-area-inset-bottom))] touch-pan-y overscroll-behavior-contain">
             {loading && !profile ? (
               <div className="animate-pulse space-y-8">
                 <div className="w-32 h-32 bg-white/5 rounded-[2.5rem] mx-auto" />
@@ -204,14 +222,8 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
                           "text-[9px] font-black px-3 py-1 rounded-lg uppercase tracking-[0.15em] border",
                           profile.user_type === 'business' ? "bg-taurus-gold/10 border-taurus-gold/30 text-taurus-gold" : "bg-clay/10 border-clay/30 text-clay"
                         )}>
-                          {profile.user_type === 'business' ? "Architect" : "Sentinel"}
+                          {profile.user_type === 'business' ? "Entrepreneur" : "Member"}
                         </div>
-                        {profile.tier === 'paid' && (
-                          <div className="text-[9px] font-black bg-taurus-gold text-white px-3 py-1 rounded-lg uppercase tracking-[0.15em] flex items-center gap-1.5 shadow-gold">
-                            <ShieldCheck className="w-3 h-3" />
-                            Elite
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
@@ -233,7 +245,7 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
                     {/* Bio Section */}
                     <div className="space-y-4">
                       <h4 className="text-[10px] font-black text-taurus-gold uppercase tracking-[0.25em] flex items-center gap-3">
-                        Manifesto
+                        About Me
                         <div className="flex-1 h-[1px] bg-white/5" />
                       </h4>
                       {isEditing ? (
@@ -322,7 +334,7 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
                         disabled={loading}
                         className="btn-primary w-full flex items-center justify-center gap-3"
                       >
-                        {loading ? <div className="w-6 h-6 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <> <Save className="w-5 h-5" /> Save Identity </>}
+                        {loading ? <div className="w-6 h-6 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <> <Save className="w-5 h-5" /> Save Profile </>}
                       </button>
                     ) : (
                       <button 
@@ -330,15 +342,23 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
                         className="btn-ghost w-full flex items-center justify-center gap-3 font-black"
                       >
                         <Edit2 className="w-5 h-5" />
-                        Modify Proxy
+                        Edit Profile
                       </button>
                     )}
                     <button 
-                      onClick={() => {}} 
+                      onClick={handleTestNotification}
+                      className="btn-ghost w-full flex items-center justify-center gap-3 font-black mt-2"
+                    >
+                      <Send className="w-5 h-5" />
+                      Test Alert
+                    </button>
+
+                    <button 
+                      onClick={signOut} 
                       className="w-full flex items-center justify-center gap-2 py-3 text-cream/20 hover:text-clay font-black transition-all text-[10px] uppercase tracking-[0.2em]"
                     >
                       <LogOut className="w-4 h-4" />
-                      Terminate Session
+                      Sign Out
                     </button>
                   </div>
                  ) : !hasBlockedMe && (
@@ -356,9 +376,9 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
                         {blockLoading ? (
                           <div className="w-6 h-6 animate-spin rounded-full border-2 border-current border-t-transparent" />
                         ) : isBlocked ? (
-                          <> <Unlock className="w-5 h-5" /> Restore Frequency </>
+                          <> <Unlock className="w-5 h-5" /> Unblock Member </>
                         ) : (
-                          <> <Ban className="w-5 h-5" /> Jamm Frequency </>
+                          <> <Ban className="w-5 h-5" /> Block Member </>
                         )}
                      </button>
 
@@ -383,7 +403,7 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
         targetId={targetId || ""}
         contentType="profile"
       />
-    </AnimatePresence>
+    </>
   );
 }
 

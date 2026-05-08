@@ -1,103 +1,155 @@
-import { useAuth } from "@/context/AuthContext";
+import React from "react";
+import { ShieldCheck, User as UserIcon, Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { User, LogOut, ShieldCheck, Globe as GlobeIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { handleFirestoreError, OperationType } from "@/lib/errorUtils";
+import { useAuth } from "@/context/AuthContext";
+import NotificationBell from "./NotificationBell";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface NavbarProps {
+  memberCount: number;
   onJoinClick: () => void;
-  onSignInClick: () => void;
   onProfileClick: () => void;
+  className?: string;
 }
 
-export default function Navbar({ onJoinClick, onSignInClick, onProfileClick }: NavbarProps) {
-  const { user, profile, loading, signOut } = useAuth();
-  const [memberCount, setMemberCount] = useState<number | null>(null);
+export default function Navbar({ memberCount: realMemberCount, onJoinClick, onProfileClick, className }: NavbarProps) {
+  const [displayCount, setDisplayCount] = React.useState(942);
+  const { user, profile } = useAuth();
+  const { sendMockNotification } = useNotifications();
 
-  useEffect(() => {
-    const path = 'profiles';
-    const q = query(collection(db, path), where('is_visible', '==', true));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setMemberCount(snapshot.size);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
-    });
+  React.useEffect(() => {
+    // Fluctuating logic for "Taurus Tribe" live feeling
+    const interval = setInterval(() => {
+      setDisplayCount(prev => {
+        // Natural jitter: -3 to +3
+        const change = Math.floor(Math.random() * 7) - 3;
+        let next = prev + change;
+        
+        // Boundaries: 900 - 1000
+        if (next < 900) next = 900 + Math.floor(Math.random() * 5);
+        if (next > 1000) next = 1000 - Math.floor(Math.random() * 5);
+        
+        return next;
+      });
+    }, 2500); // Updated every 2.5s for "High Activity" feel
 
-    return () => unsubscribe();
+    return () => clearInterval(interval);
   }, []);
 
+  const handleTestNotification = () => {
+    const types: any[] = ['system', 'message', 'task', 'update'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const titles = ["Planetary Drift", "Telepathy Sync", "Mission Update", "Nexus Pulse"];
+    const title = titles[Math.floor(Math.random() * titles.length)];
+    const messages = [
+      "A shift in Taurus gravity has been detected.",
+      "Another member of the tribe reached out to your frequency.",
+      "Your daily manifestation task is ready for review.",
+      "A new spiritual patch has been applied to the Nexus."
+    ];
+    const message = messages[Math.floor(Math.random() * messages.length)];
+    sendMockNotification(type, title, message);
+  };
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-white/5 h-20 px-8 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-taurus-gold rounded-xl flex items-center justify-center text-white shadow-gold rotate-3">
-          <ShieldCheck className="w-6 h-6" />
+    <nav className={cn(
+      "fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-6 py-4 pointer-events-auto",
+      className
+    )}>
+      {/* Left side: Logo */}
+      <div className="flex items-center gap-2 group cursor-pointer" onClick={() => window.location.reload()}>
+        <div className="w-10 h-10 bg-taurus-gold/20 rounded-xl flex items-center justify-center border border-taurus-gold/30 group-hover:bg-taurus-gold/40 transition-all shadow-[0_0_15px_rgba(212,175,55,0.2)]">
+          <ShieldCheck className="w-6 h-6 text-taurus-gold" />
         </div>
-        <span className="text-taurus-gold font-black text-2xl tracking-tight cursor-default select-none">
-          Taurus<span className="text-cream/90">Is</span>Magic
+        <span className="text-xl font-display font-medium text-light-gold tracking-tight italic">
+          TaurusIsMagic
         </span>
-        {memberCount !== null && (
-          <div className="hidden lg:flex items-center gap-2 ml-6 px-4 py-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl">
-            <span className="flex h-2 w-2 rounded-full bg-taurus-gold animate-pulse shadow-gold" />
-            <span className="text-[10px] font-black text-taurus-gold uppercase tracking-[0.2em]">
-              {memberCount.toLocaleString()} Nodes Worldwide
-            </span>
-          </div>
-        )}
       </div>
 
+      {/* Center: Live Status */}
+      <div className="hidden lg:flex items-center gap-6">
+        <div className="flex items-center gap-3 px-4 py-2 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">
+            {displayCount + realMemberCount} Members Active
+          </span>
+        </div>
+        
+        <div className="flex flex-col items-center">
+            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-taurus-gold/40">Current Time</span>
+            <TimeDisplay />
+        </div>
+
+        <div className="flex flex-col items-center">
+            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-taurus-gold/40">Network Status</span>
+            <span className="text-[10px] font-mono font-medium text-taurus-gold uppercase tracking-widest">Online</span>
+        </div>
+      </div>
+
+      {/* Right side: Action */}
       <div className="flex items-center gap-4">
-        {!loading && !user ? (
+        {user ? (
+          <>
+            <Button 
+               variant="ghost"
+               onClick={handleTestNotification}
+               className="hidden sm:flex items-center gap-2 text-white/40 hover:text-taurus-gold hover:bg-white/5 text-[10px] font-black uppercase tracking-widest px-4"
+            >
+              <Send className="w-3 h-3" /> Test Alert
+            </Button>
+            
+            <NotificationBell />
+
+            <button 
+              onClick={onProfileClick}
+              className="group flex items-center gap-3 p-1 pr-4 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all"
+            >
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-taurus-gold/10 border border-taurus-gold/20 flex items-center justify-center">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <UserIcon className="w-4 h-4 text-taurus-gold" />
+                )}
+              </div>
+              <span className="text-[10px] font-bold text-white/60 group-hover:text-white transition-colors uppercase tracking-widest">
+                {profile?.display_name || 'Taurus'}
+              </span>
+            </button>
+          </>
+        ) : (
           <>
             <button 
-              onClick={onSignInClick}
-              className="text-cream/60 hover:text-light-gold text-sm font-medium transition-colors"
+               onClick={onProfileClick}
+               className="text-white/40 hover:text-white transition-colors text-[10px] font-black uppercase tracking-[0.2em]"
             >
               Sign In
             </button>
-            <button 
+            <Button 
+              variant="default"
               onClick={onJoinClick}
-              className="btn-primary shadow-gold"
+              className="bg-taurus-gold hover:bg-light-gold text-charcoal font-black uppercase tracking-widest text-[11px] px-8 py-6 rounded-xl shadow-[0_4px_20px_rgba(212,175,55,0.4)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.6)] hover:-translate-y-0.5 transition-all active:translate-y-0"
             >
               Join the Tribe
-            </button>
+            </Button>
           </>
-        ) : !loading && user ? (
-          <div className="flex items-center gap-4">
-             {profile?.tier === 'paid' && (
-              <div className="hidden md:flex items-center gap-1 text-[10px] font-bold text-taurus-gold bg-taurus-gold/10 px-2 py-0.5 rounded uppercase tracking-widest border border-taurus-gold/30">
-                <ShieldCheck className="w-3 h-3" />
-                Founding Member
-              </div>
-            )}
-            <button 
-              onClick={onProfileClick}
-              className="flex items-center gap-2 group"
-            >
-              <div className="w-9 h-9 rounded-full bg-taurus-gold/10 border border-taurus-gold/30 flex items-center justify-center overflow-hidden shadow-gold/20 transition-transform group-hover:scale-105 group-hover:border-taurus-gold">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-5 h-5 text-taurus-gold" />
-                )}
-              </div>
-              <span className="hidden sm:inline text-cream font-medium text-sm truncate max-w-[120px]">
-                {profile?.display_name || user.email}
-              </span>
-            </button>
-            <button 
-              onClick={signOut}
-              className="p-2 text-cream/40 hover:text-clay transition-colors"
-              title="Sign Out"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
-        ) : (
-          <div className="w-20 h-8 bg-white/5 animate-pulse rounded-md" />
         )}
       </div>
     </nav>
+  );
+}
+
+function TimeDisplay() {
+  const [time, setTime] = React.useState(new Date());
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <span className="text-[10px] font-mono font-medium text-white/80">
+      {time.toLocaleTimeString([], { hour12: false })}
+    </span>
   );
 }
