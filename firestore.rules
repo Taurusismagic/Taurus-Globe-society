@@ -73,6 +73,24 @@ service cloud.firestore {
                        incoming().created_at == request.time;
     }
 
+    match /direct_messages/{messageId} {
+      // participants, user_id, recipient_id, content, created_at
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow create: if isSignedIn() &&
+                       incoming().user_id == request.auth.uid &&
+                       request.auth.uid in incoming().participants &&
+                       incoming().content is string &&
+                       incoming().content.size() > 0 &&
+                       incoming().content.size() <= 1000 &&
+                       incoming().created_at == request.time;
+    }
+
+    match /promotion_requests/{requestId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.user_id == request.auth.uid);
+      allow create: if false; // Only via Cloud Function / Admin SDK (Stripe Webhook)
+      allow update: if isAdmin();
+    }
+
     match /reports/{reportId} {
       // reporter_id, reported_id, content_type, reason, status, created_at
       allow read: if isAdmin();
