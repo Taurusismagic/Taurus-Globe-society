@@ -150,9 +150,30 @@
         "email_digest": { "type": "boolean" }
       },
       "required": ["system_enabled", "message_enabled", "task_enabled", "update_enabled"]
+    },
+    "Post": {
+      "title": "Job/Event Post",
+      "description": "Community posts for jobs or events.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "email": { "type": "string" },
+        "city": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "flyer_url": { "type": "string" },
+        "type": { "type": "string", "enum": ["job", "event"] },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "email", "city", "latitude", "longitude", "type", "created_at"]
     }
   },
   "firestore": {
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Collection of community job/event posts"
+    },
     "/leads/{leadId}": {
       "schema": "leads",
       "description": "Collection of emails from the nexus funnel"

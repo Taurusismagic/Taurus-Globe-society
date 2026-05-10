@@ -118,21 +118,14 @@ export default function Navbar({ memberCount: realMemberCount, onJoinClick, onPr
             </button>
           </>
         ) : (
-          <>
-            <button 
-               onClick={onProfileClick}
-               className="text-white/40 hover:text-white transition-colors text-[10px] font-black uppercase tracking-[0.2em]"
-            >
-              Sign In
-            </button>
-            <Button 
-              variant="default"
-              onClick={onJoinClick}
-              className="bg-taurus-gold hover:bg-light-gold text-charcoal font-black uppercase tracking-widest text-[11px] px-8 py-6 rounded-xl shadow-[0_4px_20px_rgba(212,175,55,0.4)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.6)] hover:-translate-y-0.5 transition-all active:translate-y-0"
-            >
-              Join the Tribe
-            </Button>
-          </>
+          <Button 
+            variant="default"
+            onClick={onJoinClick}
+            className="bg-taurus-gold hover:bg-light-gold text-charcoal font-black uppercase tracking-widest text-[11px] px-8 py-6 rounded-xl shadow-[0_4px_20px_rgba(212,175,55,0.4)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.6)] hover:-translate-y-0.5 transition-all active:translate-y-0 flex items-center gap-2"
+          >
+            <Send className="w-4 h-4" />
+            Post a Job / Event
+          </Button>
         )}
       </div>
     </nav>

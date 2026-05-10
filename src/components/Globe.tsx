@@ -5,13 +5,14 @@ import { useAuth } from "@/context/AuthContext";
 
 interface GlobeProps {
   members: any[];
+  posts?: any[];
   targetLocation?: [number, number] | null;
   onGlobeClick?: (lat: number, lng: number) => void;
   onboardingPins?: Array<{ lat: number; lng: number; label: string; color: string }>;
   className?: string;
 }
 
-const Globe = React.memo(({ members, targetLocation, onGlobeClick, onboardingPins, className }: GlobeProps) => {
+const Globe = React.memo(({ members, posts = [], targetLocation, onGlobeClick, onboardingPins, className }: GlobeProps) => {
   const globeEl = useRef<any>();
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -168,27 +169,58 @@ const Globe = React.memo(({ members, targetLocation, onGlobeClick, onboardingPin
 
   const htmlElements = useMemo(() => {
     const uniqueMap = new Map();
+    
+    // Combine members and posts
     members.forEach((m, index) => {
       const baseId = m.id || m.uid || `m-${index}`;
-      const uniqueId = `globe-marker-${baseId}`;
+      const uniqueId = `marker-member-${baseId}`;
       if (!uniqueMap.has(uniqueId)) {
-        uniqueMap.set(uniqueId, { ...m, uniqueId });
+        uniqueMap.set(uniqueId, { ...m, uniqueId, markerType: 'member' });
       }
     });
+
+    posts.forEach((p, index) => {
+      const baseId = p.id || `p-${index}`;
+      const uniqueId = `marker-post-${baseId}`;
+      if (!uniqueMap.has(uniqueId)) {
+        uniqueMap.set(uniqueId, { ...p, uniqueId, markerType: 'post' });
+      }
+    });
+
     return Array.from(uniqueMap.values());
-  }, [members]);
+  }, [members, posts]);
 
   const generateHtmlElement = useCallback((d: any) => {
     const el = document.createElement('div');
-    // Ensure element has a predictable class for internal tracking if needed
     el.className = 'globe-html-marker';
-    const signalColor = d.user_type === 'business' ? '#FF1493' : '#D4AF37'; 
-    el.innerHTML = `
-      <div class="group relative flex items-center justify-center cursor-pointer">
-        <div class="w-2.5 h-2.5 rounded-full relative z-10" style="background-color: ${signalColor}; box-shadow: 0 0 15px ${signalColor};"></div>
-        <div class="absolute inset-0 w-8 h-8 -left-2.5 -top-2.5 rounded-full animate-ping opacity-10" style="background-color: ${signalColor};"></div>
-      </div>
-    `;
+    
+    if (d.markerType === 'post') {
+      const icon = d.type === 'job' ? '💼' : '🎉';
+      el.innerHTML = `
+        <div class="group relative flex items-center justify-center cursor-pointer">
+          <div class="p-1 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 scale-75 group-hover:scale-110 transition-all duration-300 shadow-[0_0_15px_rgba(212,175,55,0.3)]">
+             <div class="w-6 h-6 flex items-center justify-center text-lg">
+                ${icon}
+             </div>
+          </div>
+          <div class="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-xl border border-white/10 px-4 py-2.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[100] shadow-2xl scale-90 group-hover:scale-100">
+             <div class="flex flex-col items-center">
+               <p class="text-[8px] font-black uppercase tracking-[0.3em] text-taurus-gold mb-1">${d.type} IN ${d.city}</p>
+               <p class="text-[12px] font-bold text-white tracking-tight">${d.title}</p>
+               <div class="mt-2 text-[8px] text-white/40 font-mono font-medium">${d.email}</div>
+             </div>
+          </div>
+        </div>
+      `;
+    } else {
+      const signalColor = d.user_type === 'business' ? '#FF1493' : '#D4AF37'; 
+      el.innerHTML = `
+        <div class="group relative flex items-center justify-center cursor-pointer">
+          <div class="w-2.5 h-2.5 rounded-full relative z-10" style="background-color: ${signalColor}; box-shadow: 0 0 15px ${signalColor};"></div>
+          <div class="absolute inset-0 w-8 h-8 -left-2.5 -top-2.5 rounded-full animate-ping opacity-10" style="background-color: ${signalColor};"></div>
+        </div>
+      `;
+    }
     return el;
   }, []);
 
@@ -201,11 +233,11 @@ const Globe = React.memo(({ members, targetLocation, onGlobeClick, onboardingPin
         height={dimensions.height}
         backgroundColor="rgba(0,0,0,0)"
         showAtmosphere={true}
-        atmosphereColor="#ffffff"
-        atmosphereAltitude={0.2}
+        atmosphereColor="#D4AF37"
+        atmosphereAltitude={0.25}
         rendererConfig={rendererConfig}
         
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
+        globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
         bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
 
         htmlElementsData={htmlElements}
@@ -216,10 +248,11 @@ const Globe = React.memo(({ members, targetLocation, onGlobeClick, onboardingPin
         
         enablePointerInteraction={false}
         autoRotate={true}
-        autoRotateSpeed={0.4}
+        autoRotateSpeed={0.6}
       />
 
-      <div className="absolute inset-0 pointer-events-none globe-vignette opacity-40" />
+      <div className="absolute inset-0 pointer-events-none rounded-full shadow-[inset_0_0_100px_rgba(212,175,55,0.2)]" />
+      <div className="absolute inset-0 pointer-events-none globe-vignette opacity-30" />
     </div>
   );
 });

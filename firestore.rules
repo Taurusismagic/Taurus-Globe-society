@@ -141,5 +141,24 @@ service cloud.firestore {
     match /daily_horoscopes/{dateId} {
       allow read, write: if true; 
     }
+
+    // Posts Validation
+    function isValidPost(p) {
+      return p.title is string && p.title.size() > 0 && p.title.size() <= 200 &&
+             p.email is string && p.email.size() > 0 && p.email.size() <= 200 &&
+             p.city is string && p.city.size() <= 200 &&
+             p.latitude is number && p.latitude >= -90 && p.latitude <= 90 &&
+             p.longitude is number && p.longitude >= -180 && p.longitude <= 180 &&
+             p.type in ['job', 'event'] &&
+             (p.description == null || (p.description is string && p.description.size() <= 1000)) &&
+             (p.flyer_url == null || (p.flyer_url is string && p.flyer_url.size() <= 1000));
+    }
+
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isValidPost(incoming()) && 
+                       incoming().created_at == request.time;
+      allow update, delete: if isAdmin();
+    }
   }
 }

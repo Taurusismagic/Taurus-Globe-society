@@ -11,12 +11,15 @@ import ProfilePanel from "@/components/ProfilePanel";
 import Navbar from "@/components/Navbar";
 import CosmicErrorBoundary from "@/components/CosmicErrorBoundary";
 import { AuthProvider } from "@/context/AuthContext";
+import PostModal from "@/components/PostModal";
 import { useMembers } from "@/hooks/useMembers";
+import { usePosts } from "@/hooks/usePosts";
 import { ZODIAC_SIGNS } from "@/constants";
 
 function MainApp() {
   const { members } = useMembers();
-  const [isJoinOpen, setIsJoinOpen] = useState(false);
+  const { posts } = usePosts();
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isBirthChartOpen, setIsBirthChartOpen] = useState(false);
   const [selectedSign, setSelectedSign] = useState<string | null>(null);
@@ -60,7 +63,7 @@ function MainApp() {
       
       <Navbar 
         memberCount={members.length} 
-        onJoinClick={() => setIsJoinOpen(true)}
+        onJoinClick={() => setIsPostModalOpen(true)}
         onProfileClick={() => setIsProfileOpen(true)}
       />
       
@@ -82,6 +85,7 @@ function MainApp() {
           </div>
           <Globe 
             members={members} 
+            posts={posts}
             className={cn("transition-all duration-1000", transitionData ? "scale-150 blur-sm opacity-50" : "opacity-100")}
           />
         </div>
@@ -155,7 +159,7 @@ function MainApp() {
             className="relative z-10 text-center pointer-events-none mb-12"
           >
              <p className="text-cream/50 text-sm md:text-lg font-accent font-light tracking-[0.3em] md:tracking-[0.6em] uppercase">
-               Explore the cosmos and find your path
+               Let the Taurus community help you
              </p>
           </motion.div>
         </main>
@@ -201,13 +205,13 @@ function MainApp() {
         )}
       </AnimatePresence>
 
-      {/* 6. Auth Modals */}
+      {/* 6. Action Modals */}
       <AnimatePresence>
-        {isJoinOpen && (
-          <JoinModal 
-            key="global-join-modal"
-            isOpen={isJoinOpen} 
-            onClose={() => setIsJoinOpen(false)} 
+        {isPostModalOpen && (
+          <PostModal 
+            key="global-post-modal"
+            isOpen={isPostModalOpen} 
+            onClose={() => setIsPostModalOpen(false)} 
           />
         )}
       </AnimatePresence>
