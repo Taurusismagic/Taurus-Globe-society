@@ -3,16 +3,19 @@ import GlobeGL from "react-globe.gl";
 import { useMembers } from "@/hooks/useMembers";
 import { useAuth } from "@/context/AuthContext";
 
+import { Signal } from "@/hooks/useSignals";
+
 interface GlobeProps {
   members: any[];
   posts?: any[];
+  signals?: Signal[];
   targetLocation?: [number, number] | null;
   onGlobeClick?: (lat: number, lng: number) => void;
   onboardingPins?: Array<{ lat: number; lng: number; label: string; color: string }>;
   className?: string;
 }
 
-const Globe = React.memo(({ members, posts = [], targetLocation, onGlobeClick, onboardingPins, className }: GlobeProps) => {
+const Globe = React.memo(({ members, posts = [], signals = [], targetLocation, onGlobeClick, onboardingPins, className }: GlobeProps) => {
   const globeEl = useRef<any>();
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -170,7 +173,7 @@ const Globe = React.memo(({ members, posts = [], targetLocation, onGlobeClick, o
   const htmlElements = useMemo(() => {
     const uniqueMap = new Map();
     
-    // Combine members and posts
+    // Combine members, posts, and signals
     members.forEach((m, index) => {
       const baseId = m.id || m.uid || `m-${index}`;
       const uniqueId = `marker-member-${baseId}`;
@@ -187,13 +190,33 @@ const Globe = React.memo(({ members, posts = [], targetLocation, onGlobeClick, o
       }
     });
 
+    signals.forEach((s) => {
+      const uniqueId = `marker-signal-${s.id}`;
+      if (!uniqueMap.has(uniqueId)) {
+        uniqueMap.set(uniqueId, { ...s, uniqueId, markerType: 'signal' });
+      }
+    });
+
     return Array.from(uniqueMap.values());
-  }, [members, posts]);
+  }, [members, posts, signals]);
 
   const generateHtmlElement = useCallback((d: any) => {
     const el = document.createElement('div');
     el.className = 'globe-html-marker';
     
+    if (d.markerType === 'signal') {
+      el.innerHTML = `
+        <div class="animate-float-up pointer-events-none">
+          <div class="bg-black/80 backdrop-blur-md border border-taurus-gold/30 px-3 py-1.5 rounded-full shadow-[0_0_20px_rgba(212,175,55,0.2)]">
+            <p class="text-[10px] text-taurus-gold font-bold whitespace-nowrap">${d.message}</p>
+            <p class="text-[8px] text-cream/40 uppercase tracking-tighter">${d.city}</p>
+          </div>
+          <div class="w-1 h-1 bg-taurus-gold rounded-full mx-auto mt-1 animate-pulse" />
+        </div>
+      `;
+      return el;
+    }
+
     if (d.markerType === 'post') {
       const icon = d.type === 'job' ? '💼' : '🎉';
       el.innerHTML = `
@@ -246,7 +269,7 @@ const Globe = React.memo(({ members, posts = [], targetLocation, onGlobeClick, o
         htmlLng={(d: any) => d.longitude || d.lng}
         htmlElement={generateHtmlElement}
         
-        enablePointerInteraction={false}
+        enablePointerInteraction={true}
         autoRotate={true}
         autoRotateSpeed={0.6}
       />
