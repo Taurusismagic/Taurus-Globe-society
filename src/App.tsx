@@ -14,11 +14,14 @@ import { AuthProvider } from "@/context/AuthContext";
 import PostModal from "@/components/PostModal";
 import { useMembers } from "@/hooks/useMembers";
 import { usePosts } from "@/hooks/usePosts";
+import { useSignals } from "@/hooks/useSignals";
 import { ZODIAC_SIGNS } from "@/constants";
+import TribeChatBar from "@/components/TribeChatBar";
 
 function MainApp() {
   const { members } = useMembers();
   const { posts } = usePosts();
+  const { signals, addSignal } = useSignals();
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isBirthChartOpen, setIsBirthChartOpen] = useState(false);
@@ -86,6 +89,7 @@ function MainApp() {
           <Globe 
             members={members} 
             posts={posts}
+            signals={signals}
             className={cn("transition-all duration-1000", transitionData ? "scale-150 blur-sm opacity-50" : "opacity-100")}
           />
         </div>
@@ -215,6 +219,9 @@ function MainApp() {
           />
         )}
       </AnimatePresence>
+
+      {/* 7. Tribe Chat Bar */}
+      <TribeChatBar onSendMessage={addSignal} />
 
       {/* Post-processing effects */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-space-bg/80 via-transparent to-space-bg/40" />
