@@ -80,8 +80,9 @@ function MainApp() {
         {/* Centered Globe Container */}
         <div className="relative w-full h-full flex items-center justify-center p-4">
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-             <div className="w-[800px] h-[800px] rounded-full border border-taurus-gold/10 animate-spin-slow" />
-             <div className="absolute w-[600px] h-[600px] rounded-full border border-taurus-gold/5 animate-spin-slow-reverse" />
+             <div className="w-[85vw] h-[85vw] md:w-[900px] md:h-[900px] rounded-full border border-taurus-gold/10 animate-spin-slow" />
+             <div className="absolute w-[70vw] h-[70vw] md:w-[700px] md:h-[700px] rounded-full border border-taurus-gold/5 animate-spin-slow-reverse" />
+             <div className="absolute w-[50vw] h-[50vw] md:w-[500px] md:h-[500px] rounded-full border border-white/5 opacity-50" />
           </div>
           <Globe 
             members={members} 
@@ -123,9 +124,9 @@ function MainApp() {
                <motion.div 
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="relative z-10 text-center pointer-events-none mt-12 md:mt-20 px-6"
+                className="relative z-10 text-center pointer-events-none mt-4 md:mt-8 px-6"
               >
-                <h1 className="text-3xl md:text-6xl font-display font-medium text-light-gold tracking-tight drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                <h1 className="text-3xl md:text-5xl font-display font-medium text-light-gold tracking-tight drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] italic">
                    What's your sign?
                 </h1>
               </motion.div>

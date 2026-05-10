@@ -17,9 +17,9 @@ export default function ZodiacSelector({ onSelect, className }: ZodiacSelectorPr
       const height = window.innerHeight;
       const minDimension = Math.min(width, height);
       
-      if (width < 640) setRadius(minDimension * 0.38);
-      else if (width < 1024) setRadius(minDimension * 0.35);
-      else setRadius(Math.min(height * 0.4, 380));
+      if (width < 640) setRadius(minDimension * 0.42);
+      else if (width < 1024) setRadius(minDimension * 0.4);
+      else setRadius(Math.min(height * 0.42, 440));
     };
     updateRadius();
     window.addEventListener('resize', updateRadius);
