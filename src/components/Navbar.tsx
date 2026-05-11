@@ -37,21 +37,6 @@ export default function Navbar({ memberCount: realMemberCount, onJoinClick, onPr
     return () => clearInterval(interval);
   }, []);
 
-  const handleTestNotification = () => {
-    const types: any[] = ['system', 'message', 'task', 'update'];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const titles = ["Planetary Drift", "Telepathy Sync", "Mission Update", "Nexus Pulse"];
-    const title = titles[Math.floor(Math.random() * titles.length)];
-    const messages = [
-      "A shift in Taurus gravity has been detected.",
-      "Another member of the tribe reached out to your frequency.",
-      "Your daily manifestation task is ready for review.",
-      "A new spiritual patch has been applied to the Nexus."
-    ];
-    const message = messages[Math.floor(Math.random() * messages.length)];
-    sendMockNotification(type, title, message);
-  };
-
   return (
     <nav className={cn(
       "fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-6 py-4 pointer-events-auto",
@@ -59,10 +44,10 @@ export default function Navbar({ memberCount: realMemberCount, onJoinClick, onPr
     )}>
       {/* Left side: Logo */}
       <div className="flex items-center gap-2 group cursor-pointer" onClick={() => window.location.reload()}>
-        <div className="w-10 h-10 bg-taurus-gold/20 rounded-xl flex items-center justify-center border border-taurus-gold/30 group-hover:bg-taurus-gold/40 transition-all shadow-[0_0_15px_rgba(212,175,55,0.2)]">
-          <ShieldCheck className="w-6 h-6 text-taurus-gold" />
+        <div className="w-8 h-8 md:w-10 md:h-10 bg-taurus-gold/20 rounded-lg md:rounded-xl flex items-center justify-center border border-taurus-gold/30 group-hover:bg-taurus-gold/40 transition-all shadow-[0_0_15px_rgba(212,175,55,0.2)]">
+          <ShieldCheck className="w-5 h-5 md:w-6 md:h-6 text-taurus-gold" />
         </div>
-        <span className="text-xl font-display font-medium text-light-gold tracking-tight italic">
+        <span className="text-lg md:text-xl font-display font-medium text-light-gold tracking-tight italic hidden sm:block">
           TaurusIsMagic
         </span>
       </div>
@@ -91,19 +76,11 @@ export default function Navbar({ memberCount: realMemberCount, onJoinClick, onPr
       <div className="flex items-center gap-4">
         {user ? (
           <>
-            <Button 
-               variant="ghost"
-               onClick={handleTestNotification}
-               className="hidden sm:flex items-center gap-2 text-white/40 hover:text-taurus-gold hover:bg-white/5 text-[10px] font-black uppercase tracking-widest px-4"
-            >
-              <Send className="w-3 h-3" /> Test Alert
-            </Button>
-            
             <NotificationBell />
 
             <button 
               onClick={onProfileClick}
-              className="group flex items-center gap-3 p-1 pr-4 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all"
+              className="group flex items-center gap-3 p-1 sm:pr-4 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all"
             >
               <div className="w-8 h-8 rounded-full overflow-hidden bg-taurus-gold/10 border border-taurus-gold/20 flex items-center justify-center">
                 {profile?.avatar_url ? (
@@ -112,7 +89,7 @@ export default function Navbar({ memberCount: realMemberCount, onJoinClick, onPr
                   <UserIcon className="w-4 h-4 text-taurus-gold" />
                 )}
               </div>
-              <span className="text-[10px] font-bold text-white/60 group-hover:text-white transition-colors uppercase tracking-widest">
+              <span className="text-[10px] font-bold text-white/60 group-hover:text-white transition-colors uppercase tracking-widest hidden sm:block">
                 {profile?.display_name || 'Taurus'}
               </span>
             </button>
@@ -121,10 +98,11 @@ export default function Navbar({ memberCount: realMemberCount, onJoinClick, onPr
           <Button 
             variant="default"
             onClick={onJoinClick}
-            className="bg-taurus-gold hover:bg-light-gold text-charcoal font-black uppercase tracking-widest text-[11px] px-8 py-6 rounded-xl shadow-[0_4px_20px_rgba(212,175,55,0.4)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.6)] hover:-translate-y-0.5 transition-all active:translate-y-0 flex items-center gap-2"
+            className="bg-taurus-gold hover:bg-light-gold text-charcoal font-black uppercase tracking-widest text-[9px] md:text-[11px] px-4 md:px-8 py-4 md:py-6 rounded-lg md:rounded-xl shadow-[0_4px_20px_rgba(212,175,55,0.4)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.6)] hover:-translate-y-0.5 transition-all active:translate-y-0 flex items-center gap-2"
           >
-            <Send className="w-4 h-4" />
-            Post a Job / Event
+            <Send className="w-3 h-3 md:w-4 md:h-4" />
+            <span className="hidden xs:inline">Post a Job / Event</span>
+            <span className="xs:hidden">Post</span>
           </Button>
         )}
       </div>

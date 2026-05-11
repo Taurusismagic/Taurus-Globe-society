@@ -17,9 +17,10 @@ export default function ZodiacSelector({ onSelect, className }: ZodiacSelectorPr
       const height = window.innerHeight;
       const minDimension = Math.min(width, height);
       
-      if (width < 640) setRadius(minDimension * 0.42);
-      else if (width < 1024) setRadius(minDimension * 0.4);
-      else setRadius(Math.min(height * 0.42, 440));
+      // Matched more closely to globe visual presence
+      if (width < 640) setRadius(minDimension * 0.44);
+      else if (width < 1024) setRadius(minDimension * 0.45);
+      else setRadius(Math.min(height * 0.45, 460));
     };
     updateRadius();
     window.addEventListener('resize', updateRadius);
@@ -27,30 +28,31 @@ export default function ZodiacSelector({ onSelect, className }: ZodiacSelectorPr
   }, []);
 
   return (
-    <div className={cn("relative w-full h-full flex items-center justify-center", className)}>
+    <div className={cn("relative w-full h-full flex items-center justify-center perspective-[1200px]", className)}>
       {/* 2.0 Background Orbital Geometry synced with radius */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div 
+        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+        style={{ transform: 'rotateX(65deg)' }}
+      >
         <div 
           className="rounded-full border border-white/5 animate-spin-slow-reverse" 
-          style={{ width: radius * 2, height: radius * 2 }}
+          style={{ width: radius * 2.2, height: radius * 2.2 }}
         />
         <div 
           className="absolute rounded-full border border-taurus-gold/5 animate-pulse-slow" 
-          style={{ width: radius * 2.5, height: radius * 2.5 }}
+          style={{ width: radius * 2.8, height: radius * 2.8 }}
         />
         <div 
           className="absolute rounded-full border border-taurus-gold/20 animate-spin-slow opacity-20" 
-          style={{ width: radius * 0.8, height: radius * 0.8 }}
+          style={{ width: radius * 1.8, height: radius * 1.8 }}
         />
-        
-        {/* Core Radiance */}
-        <div className="absolute w-32 h-32 bg-taurus-gold/10 blur-[80px] rounded-full animate-pulse" />
       </div>
 
       <motion.div 
         animate={{ rotate: 360 }}
         transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
         className="relative w-full h-full flex items-center justify-center font-sans"
+        style={{ transformStyle: 'preserve-3d' }}
       >
         {ZODIAC_SIGNS.map((sign, index) => {
           const angle = (index / ZODIAC_SIGNS.length) * 2 * Math.PI - Math.PI / 2;
@@ -81,7 +83,7 @@ function ZodiacOrbitItem({
   sign: typeof ZODIAC_SIGNS[0], 
   angle: number, 
   radius: number,
-  onSelect: (pos: { x: number, y: number }) => void,
+  onSelect: (pos: { x: number; y: number }) => void,
   index: number,
   key?: string
 }) {
@@ -96,27 +98,41 @@ function ZodiacOrbitItem({
     }
   };
 
+  // 3D Orbital Projection
+  // We apply a tilt to the Y coordinate calculations to simulate a 3D orbit
+  const TILT = 65 * (Math.PI / 180);
   const x = Math.cos(angle) * radius;
-  const y = Math.sin(angle) * radius;
+  const y = Math.sin(angle) * radius * Math.cos(TILT);
+  const z = Math.sin(angle) * radius * Math.sin(TILT);
+  
+  // Depth based scale and opacity
+  const depthFactor = (z + radius) / (2 * radius); // 0 to 1
+  const scale = 0.7 + (depthFactor * 0.6); // 0.7 to 1.3
+  const opacity = 0.4 + (depthFactor * 0.6); // 0.4 to 1
+  const zIndex = Math.round(depthFactor * 100);
 
   return (
     <motion.button
       ref={buttonRef}
       initial={{ opacity: 0, scale: 0 }}
       animate={{ 
-        opacity: 1, 
-        scale: 1, 
+        opacity, 
+        scale, 
         x, 
-        y
+        y,
+        zIndex,
+        filter: `blur(${Math.max(0, (1 - depthFactor) * 4)}px)`
       }}
       whileHover={{ 
-        scale: 1.15,
-        zIndex: 50,
+        scale: scale * 1.2,
+        zIndex: 200,
         x: x * 1.05,
         y: y * 1.05,
+        opacity: 1,
+        filter: 'blur(0px)',
         transition: { type: "spring", stiffness: 400, damping: 25 }
       }}
-      whileTap={{ scale: 0.9 }}
+      whileTap={{ scale: scale * 0.9 }}
       transition={{ 
         delay: index * 0.05,
         type: "spring",
@@ -124,10 +140,8 @@ function ZodiacOrbitItem({
         damping: 15
       }}
       onClick={handleClick}
-      className="absolute group flex flex-col items-center justify-center cursor-pointer pointer-events-auto z-10"
+      className="absolute group flex flex-col items-center justify-center cursor-pointer pointer-events-auto"
       style={{
-        width: 'auto',
-        height: 'auto',
         left: '50%',
         top: '50%',
         transform: 'translate(-50%, -50%)'

@@ -5,23 +5,32 @@ import Globe from "@/components/Globe";
 import HoroscopeView from "@/components/HoroscopeView";
 import ZodiacSelector from "@/components/ZodiacSelector";
 import CosmicTransition from "@/components/CosmicTransition";
-import BirthChartModal from "@/components/BirthChartModal";
-import JoinModal from "@/components/JoinModal";
 import ProfilePanel from "@/components/ProfilePanel";
 import Navbar from "@/components/Navbar";
 import CosmicErrorBoundary from "@/components/CosmicErrorBoundary";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import PostModal from "@/components/PostModal";
 import { useMembers } from "@/hooks/useMembers";
 import { usePosts } from "@/hooks/usePosts";
+import { useSignals } from "@/hooks/useSignals";
 import { ZODIAC_SIGNS } from "@/constants";
+import ChatPanel from "@/components/ChatPanel";
+import AdminPanel from "@/components/AdminPanel";
+import PaywallModal from "@/components/PaywallModal";
+import TribeChatBar from "@/components/TribeChatBar";
 
 function MainApp() {
+  const { profile, isAdmin } = useAuth();
   const { members } = useMembers();
   const { posts } = usePosts();
+  const { signals, addSignal } = useSignals();
+  
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isBirthChartOpen, setIsBirthChartOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+  
   const [selectedSign, setSelectedSign] = useState<string | null>(null);
   const [showSelector, setShowSelector] = useState(false);
   const [transitionData, setTransitionData] = useState<{ sign: string; pos: { x: number; y: number } } | null>(null);
@@ -79,14 +88,18 @@ function MainApp() {
         
         {/* Centered Globe Container */}
         <div className="relative w-full h-full flex items-center justify-center p-4">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-             <div className="w-[85vw] h-[85vw] md:w-[900px] md:h-[900px] rounded-full border border-taurus-gold/10 animate-spin-slow" />
+          <div 
+            className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 perspective-[1000px]"
+            style={{ transform: 'rotateX(65deg)' }}
+          >
+             <div className="w-[85vw] h-[85vw] md:w-[900px] md:h-[900px] rounded-full border border-taurus-gold/10 animate-spin-slow shadow-[0_0_100px_rgba(212,175,55,0.05)]" />
              <div className="absolute w-[70vw] h-[70vw] md:w-[700px] md:h-[700px] rounded-full border border-taurus-gold/5 animate-spin-slow-reverse" />
-             <div className="absolute w-[50vw] h-[50vw] md:w-[500px] md:h-[500px] rounded-full border border-white/5 opacity-50" />
+             <div className="absolute w-[50vw] h-[50vw] md:w-[500px] md:h-[500px] rounded-full border border-white/5 opacity-50 shadow-inner" />
           </div>
           <Globe 
             members={members} 
             posts={posts}
+            signals={signals}
             className={cn("transition-all duration-1000", transitionData ? "scale-150 blur-sm opacity-50" : "opacity-100")}
           />
         </div>
@@ -94,7 +107,7 @@ function MainApp() {
 
       {/* 2. UI Layers */}
       <div className="relative z-10 w-full min-h-dvh flex flex-col pointer-events-none">
-        <main className="flex-1 relative flex flex-col items-center justify-between py-16 md:py-24">
+        <main className="flex-1 relative flex flex-col items-center justify-between py-12 sm:py-16 md:py-24">
           {/* Top Title - Refined for 2.0 */}
           <AnimatePresence>
             {!showSelector && !selectedSign && !transitionData && (
@@ -103,7 +116,7 @@ function MainApp() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 0, filter: 'blur(10px)' }}
                 transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-                className="relative z-10 text-center pointer-events-none mt-12 md:mt-24 px-6"
+                className="relative z-10 text-center pointer-events-none mt-16 sm:mt-24 px-6"
               >
                 <div className="inline-block relative">
                    <motion.div 
@@ -113,7 +126,7 @@ function MainApp() {
                    >
                      Cosmic Sync v2.0
                    </motion.div>
-                   <h1 className="text-7xl md:text-9xl font-display font-medium text-light-gold tracking-tighter drop-shadow-[0_0_60px_rgba(245,230,192,0.15)] italic">
+                   <h1 className="text-5xl sm:text-7xl md:text-9xl font-display font-medium text-light-gold tracking-tighter drop-shadow-[0_0_60px_rgba(245,230,192,0.15)] italic">
                      Taurus Is Magic
                    </h1>
                    <div className="h-px w-full bg-gradient-to-r from-transparent via-taurus-gold/40 to-transparent mt-4" />
@@ -124,7 +137,7 @@ function MainApp() {
                <motion.div 
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="relative z-10 text-center pointer-events-none mt-4 md:mt-8 px-6"
+                className="relative z-10 text-center pointer-events-none mt-10 md:mt-8 px-6"
               >
                 <h1 className="text-3xl md:text-5xl font-display font-medium text-light-gold tracking-tight drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] italic">
                    What's your sign?
@@ -174,11 +187,26 @@ function MainApp() {
             onClose={() => setIsProfileOpen(false)} 
           />
         )}
-        {isBirthChartOpen && (
-          <BirthChartModal 
-            key="birth-chart-modal"
-            isOpen={isBirthChartOpen} 
-            onClose={() => setIsBirthChartOpen(false)} 
+        {isChatOpen && (
+          <ChatPanel 
+            isOpen={isChatOpen}
+            onClose={() => setIsChatOpen(false)}
+            onUpgradeClick={() => {
+              setIsChatOpen(false);
+              setIsPaywallOpen(true);
+            }}
+          />
+        )}
+        {isAdminOpen && (
+          <AdminPanel 
+            isOpen={isAdminOpen}
+            onClose={() => setIsAdminOpen(false)}
+          />
+        )}
+        {isPaywallOpen && (
+          <PaywallModal 
+            isOpen={isPaywallOpen}
+            onClose={() => setIsPaywallOpen(false)}
           />
         )}
       </AnimatePresence>
@@ -217,7 +245,8 @@ function MainApp() {
         )}
       </AnimatePresence>
 
-      {/* Post-processing effects */}
+      <TribeChatBar onSendMessage={addSignal} />
+
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-space-bg/80 via-transparent to-space-bg/40" />
     </div>
   );

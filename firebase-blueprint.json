@@ -167,6 +167,31 @@
         "created_at": { "type": "string", "format": "date-time" }
       },
       "required": ["title", "email", "city", "latitude", "longitude", "type", "created_at"]
+    },
+    "DirectMessage": {
+      "title": "Direct Message",
+      "description": "Private messages between users.",
+      "type": "object",
+      "properties": {
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "user_id": { "type": "string" },
+        "recipient_id": { "type": "string" },
+        "content": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["participants", "user_id", "content", "created_at"]
+    },
+    "PromotionRequest": {
+      "title": "Promotion Request",
+      "description": "Requests for account promotion (e.g., via Stripe).",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "tier": { "type": "string", "enum": ["paid"] },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["user_id", "status", "tier", "created_at"]
     }
   },
   "firestore": {
@@ -213,6 +238,14 @@
     "anonymous_chat/{messageId}": {
       "schema": "AnonymousMessage",
       "description": "Anonymous messages for the cinematic chat."
+    },
+    "direct_messages/{messageId}": {
+      "schema": "DirectMessage",
+      "description": "User direct messages."
+    },
+    "promotion_requests/{requestId}": {
+      "schema": "PromotionRequest",
+      "description": "Account promotion requests."
     }
   }
 }

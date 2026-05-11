@@ -2,29 +2,30 @@ import React, { useEffect, useRef, useState, useMemo, useCallback } from "react"
 import GlobeGL from "react-globe.gl";
 import { useMembers } from "@/hooks/useMembers";
 import { useAuth } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
+
+import { Signal } from "@/hooks/useSignals";
 
 interface GlobeProps {
   members: any[];
   posts?: any[];
+  signals?: Signal[];
   targetLocation?: [number, number] | null;
   onGlobeClick?: (lat: number, lng: number) => void;
-  onboardingPins?: Array<{ lat: number; lng: number; label: string; color: string }>;
   className?: string;
 }
 
-const Globe = React.memo(({ members, posts = [], targetLocation, onGlobeClick, onboardingPins, className }: GlobeProps) => {
+const Globe = React.memo(({ members, posts = [], signals = [], targetLocation, onGlobeClick, className }: GlobeProps) => {
   const globeEl = useRef<any>();
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // Optimize renderer config
   const rendererConfig = useMemo(() => ({
-    antialias: window.devicePixelRatio < 2,
+    antialias: true,
     alpha: true,
     powerPreference: "high-performance" as const
   }), []);
 
-  // Handle resize
   useEffect(() => {
     if (!containerRef.current) return;
     
@@ -41,136 +42,18 @@ const Globe = React.memo(({ members, posts = [], targetLocation, onGlobeClick, o
     return () => resizeObserver.disconnect();
   }, []);
 
-  const [countries, setCountries] = useState<any[]>([]);
-
-  // Load GeoJSON for countries and pre-calculate labels
-  useEffect(() => {
-    fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
-      .then(res => res.json())
-      .then(data => {
-        const featuresWithLabels = data.features.map((f: any, idx: number) => {
-          let minX = 180, minY = 90, maxX = -180, maxY = -90;
-          const traverse = (c: any) => {
-            if (Array.isArray(c[0])) c.forEach(traverse);
-            else {
-              minX = Math.min(minX, c[0]); maxX = Math.max(maxX, c[0]);
-              minY = Math.min(minY, c[1]); maxY = Math.max(maxY, c[1]);
-            }
-          };
-          traverse(f.geometry.coordinates);
-          
-          const props = f.properties;
-          const name = props.name || props.NAME || props.ADMIN || props.admin || "";
-          const baseId = props.id || props.iso_a3 || props.ISO_A3 || `region-${idx}`;
-          const id = `${baseId}-${name.replace(/\s+/g, '-').toLowerCase()}-${idx}`;
-          const area = (maxX - minX) * (maxY - minY);
-
-          return {
-            lat: (minY + maxY) / 2,
-            lng: (minX + maxX) / 2,
-            name,
-            id,
-            area
-          };
-        })
-        .filter((l: any) => l.name && l.area > 5)
-        .sort((a: any, b: any) => b.area - a.area);
-
-        setCountries(featuresWithLabels);
-      });
-  }, []);
-
-  // Memoize labels and points to prevent recalculation on every re-render
-  const data = useMemo(() => {
-    if (!countries.length) return { points: [], labels: [] };
-
-    const attractors = [
-      { lat: 40.7128, lng: -74.0060 }, // NYC
-      { lat: 51.5074, lng: -0.1278 },  // London
-      { lat: 35.6762, lng: 139.6503 }, // Tokyo
-      { lat: 48.8566, lng: 2.3522 },   // Paris
-      { lat: 25.2048, lng: 55.2708 },  // Dubai
-      { lat: 1.3521, lng: 103.8198 },  // Singapore
-      { lat: 19.0760, lng: 72.8777 },  // Mumbai
-      { lat: 31.2304, lng: 121.4737 }, // Shanghai
-      { lat: -23.5505, lng: -46.6333 },// Sao Paulo
-      { lat: 6.5244, lng: 3.3792 },    // Lagos
-      { lat: -33.8688, lng: 151.2093 },// Sydney
-      { lat: 19.4326, lng: -99.1332 }, // CDMX
-      { lat: -1.2921, lng: 36.8219 },  // Nairobi
-      { lat: 30.0444, lng: 31.2357 },  // Cairo
-      { lat: 37.5665, lng: 126.9780 }, // Seoul
-      { lat: 34.0522, lng: -118.2437 },// LA
-      { lat: 55.7558, lng: 37.6173 },  // Moscow
-      { lat: -34.6037, lng: -58.3816 },// BA
-      { lat: 39.9042, lng: 116.4074 }, // Beijing
-      { lat: 28.6139, lng: 77.2090 },  // Delhi
-      { lat: -26.2041, lng: 28.0473 }, // Johannesburg
-      { lat: 43.6532, lng: -79.3832 }, // Toronto
-      { lat: 34.6937, lng: 135.5023 }, // Osaka
-      { lat: -37.8136, lng: 144.9631 },// Melbourne
-      { lat: 14.5995, lng: 120.9842 }, // Manila
-      { lat: 6.4654, lng: 3.4064 },    // Lagos (extra density)
-    ];
-
-    const labels = countries.slice(0, 40); // Only show top 40 major regions for that "glint" look
-
-    const pts: Array<{ lat: number; lng: number; color: string }> = [];
-    
-    // Create clusters around attractors
-    attractors.forEach(attractor => {
-      // Create a dense core and then a sparser "square" grid around it
-      const clusterSize = 20 + Math.floor(Math.random() * 30);
-      for (let i = 0; i < clusterSize; i++) {
-        // Grid-like jitter for the "square" cluster look
-        const gridSize = 1.5;
-        const gridX = Math.round((Math.random() - 0.5) * 10);
-        const gridY = Math.round((Math.random() - 0.5) * 10);
-        
-        const lat = attractor.lat + gridY * (gridSize / 2) + (Math.random() - 0.5) * 0.4;
-        const lng = attractor.lng + gridX * (gridSize / 2) + (Math.random() - 0.5) * 0.4;
-        
-        pts.push({
-          lat,
-          lng,
-          color: Math.random() > 0.1 ? '#D4AF37' : '#FF1493'
-        });
-      }
-    });
-
-    return { points: pts, labels };
-  }, [countries]);
-
-  const { points: backgroundPoints } = data;
-
-  // Handle fly-to
-  useEffect(() => {
-    if (targetLocation && globeEl.current) {
-      globeEl.current.pointOfView({
-        lat: targetLocation[0],
-        lng: targetLocation[1],
-        altitude: 1.8
-      }, 1500);
-    }
-  }, [targetLocation]);
-
-  const onGlobeReady = useCallback(() => {
+  // Use a higher resolution texture for better detail
+  const globeMaterial = useMemo(() => {
     if (globeEl.current) {
-      const controls = globeEl.current.controls();
-      controls.enableZoom = true;
-      controls.enablePan = true;
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.08;
-      controls.rotateSpeed = 1.8;
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.3;
+        const material = globeEl.current.getGlobeMaterial();
+        material.roughness = 0.6;
+        material.metalness = 0.3;
     }
   }, []);
 
   const htmlElements = useMemo(() => {
     const uniqueMap = new Map();
     
-    // Combine members and posts
     members.forEach((m, index) => {
       const baseId = m.id || m.uid || `m-${index}`;
       const uniqueId = `marker-member-${baseId}`;
@@ -187,50 +70,98 @@ const Globe = React.memo(({ members, posts = [], targetLocation, onGlobeClick, o
       }
     });
 
+    signals.forEach((s) => {
+      const uniqueId = `marker-signal-${s.id}`;
+      if (!uniqueMap.has(uniqueId)) {
+        uniqueMap.set(uniqueId, { ...s, uniqueId, markerType: 'signal' });
+      }
+    });
+
     return Array.from(uniqueMap.values());
-  }, [members, posts]);
+  }, [members, posts, signals]);
 
   const generateHtmlElement = useCallback((d: any) => {
     const el = document.createElement('div');
     el.className = 'globe-html-marker';
     
+    if (d.markerType === 'signal') {
+        el.innerHTML = `
+          <div class="signal-flag pointer-events-auto group relative cursor-pointer pt-6 px-10 -mt-6 -mx-10 select-none touch-manipulation">
+            <!-- The Bubble -->
+            <div class="signal-bubble absolute bottom-full left-1/2 -translate-x-1/2 mb-4 opacity-0 scale-50 transition-all duration-300 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto group-active:opacity-100 group-active:scale-100 group-active:pointer-events-auto">
+               <div class="relative bg-black/95 backdrop-blur-3xl border border-red-500/50 px-5 py-3 rounded-[24px] shadow-[0_0_50px_rgba(0,0,0,0.9)] min-w-[160px] text-center border-b-4">
+                  <p class="text-[13px] text-cream font-bold leading-snug mb-1">"${d.message}"</p>
+                  <p class="text-[9px] text-red-500 font-black uppercase tracking-[0.2em] opacity-80">${d.city}</p>
+                  <!-- Arrow -->
+                  <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-black border-r border-b border-red-500/50 rotate-45"></div>
+               </div>
+            </div>
+
+            <!-- The Stalk -->
+            <div class="relative flex flex-col items-center">
+               <!-- High Visibility Tip -->
+               <div class="w-4 h-4 md:w-3 md:h-3 bg-red-600 rounded-full shadow-[0_0_25px_#DC2626] animate-pulse group-active:scale-150 transition-transform"></div>
+               <!-- The Line -->
+               <div class="w-[2px] h-10 md:h-8 bg-gradient-to-t from-transparent via-red-500/60 to-red-600 mt-[-2px]"></div>
+            </div>
+          </div>
+        `;
+        return el;
+    }
+    
     if (d.markerType === 'post') {
       const icon = d.type === 'job' ? '💼' : '🎉';
       el.innerHTML = `
         <div class="group relative flex items-center justify-center cursor-pointer">
-          <div class="p-1 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 scale-75 group-hover:scale-110 transition-all duration-300 shadow-[0_0_15px_rgba(212,175,55,0.3)]">
+          <div class="p-1 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 scale-75 group-hover:scale-110 transition-all duration-300 shadow-[0_0_20px_rgba(212,175,55,0.4)]">
              <div class="w-6 h-6 flex items-center justify-center text-lg">
                 ${icon}
              </div>
           </div>
-          <div class="absolute -top-14 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-xl border border-white/10 px-4 py-2.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[100] shadow-2xl scale-90 group-hover:scale-100">
+          <div class="absolute -top-16 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-xl border border-taurus-gold/30 px-5 py-3 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[100] shadow-[0_0_40px_rgba(0,0,0,0.8)] scale-90 group-hover:scale-100">
              <div class="flex flex-col items-center">
-               <p class="text-[8px] font-black uppercase tracking-[0.3em] text-taurus-gold mb-1">${d.type} IN ${d.city}</p>
-               <p class="text-[12px] font-bold text-white tracking-tight">${d.title}</p>
-               <div class="mt-2 text-[8px] text-white/40 font-mono font-medium">${d.email}</div>
+               <p class="text-[8px] font-black uppercase tracking-[0.4em] text-taurus-gold mb-1.5">${d.type} IN ${d.city.split(',')[0]}</p>
+               <p class="text-[14px] font-bold text-white tracking-tight leading-none">${d.title}</p>
+               <div class="mt-2.5 text-[9px] text-white/40 font-mono font-medium border-t border-white/10 pt-2 w-full text-center">${d.email}</div>
              </div>
           </div>
         </div>
       `;
     } else {
-      const signalColor = d.user_type === 'business' ? '#FF1493' : '#D4AF37'; 
+      const signalColor = d.tier === 'paid' ? '#D4AF37' : '#F5E6C0'; 
       el.innerHTML = `
         <div class="group relative flex items-center justify-center cursor-pointer">
-          <div class="w-2.5 h-2.5 rounded-full relative z-10" style="background-color: ${signalColor}; box-shadow: 0 0 15px ${signalColor};"></div>
-          <div class="absolute inset-0 w-8 h-8 -left-2.5 -top-2.5 rounded-full animate-ping opacity-10" style="background-color: ${signalColor};"></div>
+          <div class="w-3 h-3 rounded-full relative z-10" style="background-color: ${signalColor}; box-shadow: 0 0 20px ${signalColor}80;"></div>
+          <div class="absolute inset-0 w-12 h-12 -left-4.5 -top-4.5 rounded-full animate-ping opacity-5" style="background-color: ${signalColor};"></div>
+          
+          <div class="absolute -bottom-12 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[100] scale-90 group-hover:scale-100">
+             <p class="text-[10px] font-bold text-cream">${d.display_name || "Initiating..."}</p>
+          </div>
         </div>
       `;
     }
     return el;
   }, []);
 
+  const onGlobeReady = useCallback(() => {
+    if (globeEl.current) {
+      const controls = globeEl.current.controls();
+      controls.enableZoom = false; // Disable zoom to keep the cinematic framing
+      controls.enablePan = false;
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.1;
+      controls.autoRotate = false;
+      controls.autoRotateSpeed = 0.4;
+    }
+  }, []);
+
   return (
-    <div ref={containerRef} className={`relative w-full h-full bg-transparent animate-fade-in ${className}`}>
+    <div ref={containerRef} className={cn("relative w-full h-full bg-transparent overflow-visible", className)}>
       <GlobeGL
         ref={globeEl}
         onGlobeReady={onGlobeReady}
         width={dimensions.width}
-        height={dimensions.height}
+        height={dimensions.height || 1}
         backgroundColor="rgba(0,0,0,0)"
         showAtmosphere={true}
         atmosphereColor="#D4AF37"
@@ -246,13 +177,13 @@ const Globe = React.memo(({ members, posts = [], targetLocation, onGlobeClick, o
         htmlLng={(d: any) => d.longitude || d.lng}
         htmlElement={generateHtmlElement}
         
-        enablePointerInteraction={false}
-        autoRotate={true}
-        autoRotateSpeed={0.6}
+        enablePointerInteraction={true}
       />
-
-      <div className="absolute inset-0 pointer-events-none rounded-full shadow-[inset_0_0_100px_rgba(212,175,55,0.2)]" />
-      <div className="absolute inset-0 pointer-events-none globe-vignette opacity-30" />
+      
+      {/* Decorative Aura */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+         <div className="w-[80%] h-[80%] rounded-full bg-taurus-gold/5 blur-[100px] animate-pulse-slow" />
+      </div>
     </div>
   );
 });

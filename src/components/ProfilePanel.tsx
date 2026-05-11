@@ -7,7 +7,6 @@ import { doc, getDoc, updateDoc, setDoc, deleteDoc, serverTimestamp } from "fire
 import { cn } from "@/lib/utils";
 import ReportModal from "./ReportModal";
 import { handleFirestoreError, OperationType } from "@/lib/errorUtils";
-import { useNotifications } from "@/hooks/useNotifications";
 
 interface ProfilePanelProps {
   key?: string;
@@ -18,27 +17,11 @@ interface ProfilePanelProps {
 
 export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanelProps) {
   const { user, profile: myProfile, refreshProfile, blockedIds, whoBlockedMeIds, refreshBlocks, signOut } = useAuth();
-  const { sendMockNotification } = useNotifications();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [blockLoading, setBlockLoading] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
-
-  const handleTestNotification = () => {
-    const types: any[] = ['system', 'message', 'task', 'update'];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const titles = ["Planetary Drift", "Telepathy Sync", "Mission Update", "Nexus Pulse"];
-    const title = titles[Math.floor(Math.random() * titles.length)];
-    const messages = [
-      "A shift in Taurus gravity has been detected.",
-      "Another member of the tribe reached out to your frequency.",
-      "Your daily manifestation task is ready for review.",
-      "A new spiritual patch has been applied to the Nexus."
-    ];
-    const message = messages[Math.floor(Math.random() * messages.length)];
-    sendMockNotification(type, title, message);
-  };
   
   // Edit state
   const [editData, setEditData] = useState<any>({});
@@ -150,7 +133,7 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
            transition={{ type: "spring", damping: 30, stiffness: 300 }}
            className="relative w-full md:max-w-[420px] glass-panel h-full border-l border-white/5 shadow-2xl flex flex-col pointer-events-auto overscroll-behavior-contain"
         >
-          <div className="p-5 md:p-8 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
+          <div className="p-4 sm:p-8 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
             <div>
               <h2 className="font-black text-xl md:text-2xl text-taurus-gold tracking-tighter">
                 {isOwnProfile ? "My Profile" : "Member Profile"}
@@ -162,7 +145,7 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 md:p-10 scrollbar-hide pb-[calc(1.5rem+env(safe-area-inset-bottom))] touch-pan-y overscroll-behavior-contain">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-10 scrollbar-hide pb-[calc(1.5rem+env(safe-area-inset-bottom))] touch-pan-y overscroll-behavior-contain">
             {loading && !profile ? (
               <div className="animate-pulse space-y-8">
                 <div className="w-32 h-32 bg-white/5 rounded-[2.5rem] mx-auto" />
@@ -345,13 +328,6 @@ export default function ProfilePanel({ isOpen, onClose, targetId }: ProfilePanel
                         Edit Profile
                       </button>
                     )}
-                    <button 
-                      onClick={handleTestNotification}
-                      className="btn-ghost w-full flex items-center justify-center gap-3 font-black mt-2"
-                    >
-                      <Send className="w-5 h-5" />
-                      Test Alert
-                    </button>
 
                     <button 
                       onClick={signOut} 
