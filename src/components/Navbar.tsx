@@ -1,5 +1,5 @@
 import React from "react";
-import { ShieldCheck, User as UserIcon, Send } from "lucide-react";
+import { ShieldCheck, User as UserIcon, Send, Instagram, Twitter, Music, Ghost, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -68,48 +68,97 @@ export default function Navbar({ memberCount: realMemberCount, onJoinClick, onPr
       </div>
 
       {/* Right side: Action */}
-      <div className="flex items-center gap-4">
-        {user ? (
-          <>
-            <NotificationBell />
+      <div className="flex items-center gap-6">
+        <div className="flex flex-col items-center gap-3">
+          {user ? (
+            <div className="flex items-center gap-4">
+              <NotificationBell />
 
-            <button 
-              onClick={onProfileClick}
-              className="group flex items-center gap-3 p-1 sm:pr-4 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all"
-            >
-              <div className="w-8 h-8 rounded-full overflow-hidden bg-taurus-gold/10 border border-taurus-gold/20 flex items-center justify-center">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <UserIcon className="w-4 h-4 text-taurus-gold" />
-                )}
-              </div>
-              <span className="text-[10px] font-bold text-white/60 group-hover:text-white transition-colors uppercase tracking-widest hidden sm:block">
-                {profile?.display_name || 'Taurus'}
-              </span>
-            </button>
-          </>
-        ) : (
-          <div className="flex items-center gap-3">
+              <button 
+                onClick={onProfileClick}
+                className="group flex items-center gap-3 p-1 pr-4 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all"
+              >
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-taurus-gold/10 border border-taurus-gold/20 flex items-center justify-center">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <UserIcon className="w-4 h-4 text-taurus-gold" />
+                  )}
+                </div>
+                <span className="text-[10px] font-bold text-white/60 group-hover:text-white transition-colors uppercase tracking-widest hidden sm:block">
+                  {profile?.display_name || 'Taurus'}
+                </span>
+              </button>
+            </div>
+          ) : (
             <button
                onClick={() => signInWithGoogle()}
-               className="hidden md:flex flex-col items-center justify-center px-4 py-2 hover:bg-white/5 rounded-xl transition-all"
+               className="hidden md:flex flex-col items-center justify-center px-4 py-1 hover:bg-white/5 rounded-xl transition-all"
             >
-               <span className="text-[8px] font-black uppercase text-cream/40 mb-1">Start Your Journey</span>
+               <span className="text-[8px] font-black uppercase text-cream/40 mb-0.5">Start Your Journey</span>
                <span className="text-[10px] font-black text-taurus-gold tracking-widest">JOIN US</span>
             </button>
-            
-            <Button 
-              variant="default"
-              onClick={onJoinClick}
-              className="bg-taurus-gold hover:bg-light-gold text-charcoal font-black uppercase tracking-widest text-[9px] md:text-[11px] px-4 md:px-8 py-4 md:py-6 rounded-lg md:rounded-xl shadow-[0_4px_20px_rgba(212,175,55,0.4)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.6)] hover:-translate-y-0.5 transition-all active:translate-y-0 flex items-center gap-2"
+          )}
+
+          <Button 
+            variant="default"
+            onClick={onJoinClick}
+            className="bg-taurus-gold hover:bg-light-gold text-[#FF69B4] font-black uppercase tracking-widest text-[9px] md:text-[10px] px-4 md:px-6 py-2.5 md:py-4 rounded-lg md:rounded-xl shadow-[0_4px_20px_rgba(212,175,55,0.4)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.6)] hover:-translate-y-0.5 transition-all active:translate-y-0 flex items-center gap-2"
+          >
+            <Send className="w-3 h-3 md:w-3.5 md:h-3.5" />
+            <span className="hidden xs:inline">Post your event or a job</span>
+            <span className="xs:hidden">Post</span>
+          </Button>
+
+          <div className="flex items-center gap-5 px-2">
+            <a 
+              href="https://open.spotify.com/user/taurusismagic?utm_source=chatgpt.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-[#FF69B4] hover:text-white transition-colors"
+              title="Spotify"
             >
-              <Send className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden xs:inline">Share your dreams</span>
-              <span className="xs:hidden">Post</span>
-            </Button>
+              <Music className="w-4 h-4" />
+            </a>
+            <a 
+              href="https://x.com/taurusismagic?utm_source=chatgpt.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-[#FF69B4] hover:text-white transition-colors"
+              title="X (Twitter)"
+            >
+              <Twitter className="w-4 h-4" />
+            </a>
+            <a 
+              href="https://www.instagram.com/taurusismagic/?utm_source=chatgpt.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-[#FF69B4] hover:text-white transition-colors"
+              title="Instagram"
+            >
+              <Instagram className="w-4 h-4" />
+            </a>
+            <a 
+              href="https://www.snapchat.com/@taurusismagic?utm_source=chatgpt.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-[#FF69B4] hover:text-white transition-colors"
+              title="Snapchat"
+            >
+              <Ghost className="w-4 h-4" />
+            </a>
+            <a 
+              href="https://cash.app/$Taurusismagic" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="group flex items-center gap-1.5 text-[#FF69B4] hover:text-white transition-colors"
+              title="CashApp"
+            >
+              <DollarSign className="w-4 h-4" />
+              <span className="text-[9px] font-black tracking-widest hidden lg:inline">$Taurusismagic</span>
+            </a>
           </div>
-        )}
+        </div>
       </div>
     </nav>
   );

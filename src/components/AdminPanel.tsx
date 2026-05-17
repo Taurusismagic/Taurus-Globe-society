@@ -99,7 +99,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                 <Shield className="w-6 h-6" />
              </div>
              <div>
-                <h2 className="text-xl font-bold text-cream">Tribe Oversight</h2>
+                <h2 className="text-xl font-bold text-cream">Community Oversight</h2>
                 <p className="text-xs text-cream/40 font-bold uppercase tracking-widest">Admin Control Center</p>
              </div>
           </div>

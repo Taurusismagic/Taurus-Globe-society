@@ -12,11 +12,10 @@ import { handleFirestoreError, OperationType } from "@/lib/errorUtils";
 interface ChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpgradeClick: () => void;
   targetUserId?: string | null;
 }
 
-export default function ChatPanel({ isOpen, onClose, onUpgradeClick, targetUserId }: ChatPanelProps) {
+export default function ChatPanel({ isOpen, onClose, targetUserId }: ChatPanelProps) {
   const { user, profile, blockedIds, whoBlockedMeIds } = useAuth();
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -34,7 +33,6 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick, targetUserI
     targetId: "",
   });
 
-  const isPaid = profile?.tier === 'paid';
   const allRelatedBlockIds = useMemo(() => [...blockedIds, ...whoBlockedMeIds], [blockedIds, whoBlockedMeIds]);
 
   useEffect(() => {
@@ -46,7 +44,7 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick, targetUserI
   }, [targetUserId, isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !isPaid) return;
+    if (!isOpen) return;
 
     let path = 'messages';
     let messagesRef = collection(db, path);
@@ -88,7 +86,7 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick, targetUserI
     });
 
     return () => unsubscribe();
-  }, [isOpen, isPaid, allRelatedBlockIds, chatMode, targetUserId, user, profile?.city]);
+  }, [isOpen, allRelatedBlockIds, chatMode, targetUserId, user, profile?.city]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -98,7 +96,7 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick, targetUserI
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || !isPaid || !profile) return;
+    if (!newMessage.trim() || !user || !profile) return;
 
     const msg = newMessage;
     setNewMessage("");
@@ -163,17 +161,16 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick, targetUserI
           </div>
 
           <div className="flex-1 flex flex-col overflow-hidden relative">
-            {isPaid && (
-              <div className="px-4 sm:px-8 py-4 border-b border-white/5 bg-white/[0.01] flex gap-2">
-                <button 
-                  onClick={() => setChatMode('global')}
-                  className={cn(
-                    "flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                    chatMode === 'global' ? "bg-taurus-gold text-white shadow-gold" : "text-cream/40 hover:text-cream/60 bg-white/5"
-                  )}
-                >
-                  Global
-                </button>
+            <div className="px-4 sm:px-8 py-4 border-b border-white/5 bg-white/[0.01] flex gap-2">
+              <button 
+                onClick={() => setChatMode('global')}
+                className={cn(
+                  "flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                  chatMode === 'global' ? "bg-taurus-gold text-white shadow-gold" : "text-cream/40 hover:text-cream/60 bg-white/5"
+                )}
+              >
+                Global
+              </button>
                 <button 
                   onClick={() => setChatMode('local')}
                   className={cn(
@@ -182,43 +179,19 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick, targetUserI
                   )}
                 >
                   Local ({profile?.city?.split(',')[0] || 'Unknown'})
-                </button>
-                {targetUserId && (
-                   <button 
-                    onClick={() => setChatMode('direct')}
-                    className={cn(
-                      "flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                      chatMode === 'direct' ? "bg-clay text-white shadow-lg shadow-clay/20" : "text-cream/40 hover:text-cream/60 bg-white/5"
-                    )}
-                  >
-                    Direct
-                  </button>
-                )}
-              </div>
-            )}
-
-            {!isPaid && (
-              <div className="absolute inset-0 z-20 bg-space-bg/60 backdrop-blur-xl flex flex-col items-center justify-center p-12 text-center">
-                <motion.div 
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="w-20 h-20 bg-taurus-gold/20 rounded-[2rem] flex items-center justify-center mb-8 border border-taurus-gold/30 shadow-gold"
+              </button>
+              {targetUserId && (
+                 <button 
+                  onClick={() => setChatMode('direct')}
+                  className={cn(
+                    "flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                    chatMode === 'direct' ? "bg-clay text-white shadow-lg shadow-clay/20" : "text-cream/40 hover:text-cream/60 bg-white/5"
+                  )}
                 >
-                  <Lock className="w-10 h-10 text-taurus-gold" />
-                </motion.div>
-                <h3 className="text-2xl font-black mb-4 text-cream tracking-tight">Authorized Personnel Only.</h3>
-                <p className="text-cream/50 text-base mb-10 font-medium">
-                  This area is reserved for our members. Join us to start chatting!
-                </p>
-                <button 
-                  onClick={onUpgradeClick}
-                  className="btn-primary w-full flex items-center justify-center gap-3"
-                >
-                  <Sparkles className="w-5 h-5" />
-                  Upgrade Credentials
+                  Direct
                 </button>
-              </div>
-            )}
+              )}
+            </div>
 
             <div 
               ref={scrollRef}
@@ -267,14 +240,13 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick, targetUserI
             <div className="p-4 sm:p-8 bg-white/[0.02] border-t border-white/5">
               <form onSubmit={handleSend} className="relative group">
                 <input 
-                  disabled={!isPaid}
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder={isPaid ? "Type a signal..." : "Initialization Required"}
+                  placeholder="Type a message..."
                   className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 pr-14 text-base text-cream placeholder:text-cream/20 focus:border-taurus-gold/50 focus:bg-white/10 outline-none transition-all duration-300 backdrop-blur-md"
                 />
                 <button 
-                  disabled={!isPaid || !newMessage.trim()}
+                  disabled={!newMessage.trim()}
                   type="submit"
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-taurus-gold text-white rounded-xl flex items-center justify-center disabled:opacity-20 disabled:grayscale transition-all hover:scale-105 active:scale-95 shadow-gold shadow-sm"
                 >

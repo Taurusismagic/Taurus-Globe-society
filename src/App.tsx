@@ -16,7 +16,6 @@ import { useSignals } from "@/hooks/useSignals";
 import { ZODIAC_SIGNS } from "@/constants";
 import ChatPanel from "@/components/ChatPanel";
 import AdminPanel from "@/components/AdminPanel";
-import PaywallModal from "@/components/PaywallModal";
 import ChatBar from "@/components/TribeChatBar";
 import OnboardingModal from "@/components/OnboardingModal";
 
@@ -30,7 +29,6 @@ function MainApp() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   
   const [selectedSign, setSelectedSign] = useState<string | null>(null);
@@ -202,22 +200,12 @@ function MainApp() {
           <ChatPanel 
             isOpen={isChatOpen}
             onClose={() => setIsChatOpen(false)}
-            onUpgradeClick={() => {
-              setIsChatOpen(false);
-              setIsPaywallOpen(true);
-            }}
           />
         )}
         {isAdminOpen && (
           <AdminPanel 
             isOpen={isAdminOpen}
             onClose={() => setIsAdminOpen(false)}
-          />
-        )}
-        {isPaywallOpen && (
-          <PaywallModal 
-            isOpen={isPaywallOpen}
-            onClose={() => setIsPaywallOpen(false)}
           />
         )}
       </AnimatePresence>

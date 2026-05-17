@@ -135,7 +135,7 @@ const Globe = React.memo(({ members, posts = [], signals = [], targetLocation, o
         </div>
       `;
     } else {
-      const signalColor = d.tier === 'paid' ? '#D4AF37' : '#F5E6C0'; 
+      const signalColor = '#D4AF37'; 
       el.innerHTML = `
         <div class="group relative flex items-center justify-center cursor-pointer">
           <div class="w-3 h-3 rounded-full relative z-10" style="background-color: ${signalColor}; box-shadow: 0 0 20px ${signalColor}80;"></div>
