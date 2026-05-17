@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Moon, Heart, Zap, Briefcase, Globe, Cake, Share2, Check, Sparkles, ArrowLeft } from "lucide-react";
+import { X, Moon, Heart, Zap, Briefcase, Globe, Cake, Share2, Check, Sparkles, ArrowLeft, Volume2, VolumeX, Play, Pause, Loader2 } from "lucide-react";
 import { getDetailedHoroscope, ZodiacHoroscope } from "@/lib/gemini";
 import { cn } from "@/lib/utils";
 import { ZODIAC_SIGNS } from "@/constants";
@@ -19,6 +19,13 @@ export default function HoroscopeView({ sign, onClose }: HoroscopeViewProps) {
   const [viewMode, setViewMode] = useState<'pulse' | 'deep'>('pulse');
   const [showVibeCard, setShowVibeCard] = useState(false);
 
+  // Audio State
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchHoroscope = async () => {
       setLoading(true);
@@ -27,7 +34,96 @@ export default function HoroscopeView({ sign, onClose }: HoroscopeViewProps) {
       setLoading(false);
     };
     fetchHoroscope();
+
+    return () => {
+      if (sourceNodeRef.current) {
+        sourceNodeRef.current.stop();
+      }
+    };
   }, [sign]);
+
+  const toggleAudio = async () => {
+    if (isPlaying) {
+      if (sourceNodeRef.current) {
+        sourceNodeRef.current.stop();
+        sourceNodeRef.current = null;
+      }
+      setIsPlaying(false);
+      return;
+    }
+
+    if (!horoscope) return;
+
+    try {
+      setIsGeneratingAudio(true);
+      setAudioError(null);
+
+      // Concatenate all parts for a smooth, sophisticated reading experience
+      const fullTextToRead = `
+        Your daily signal for ${sign}.
+        ${horoscope.general}
+        
+        In the realm of connection: ${horoscope.love}
+        
+        Your physical and emotional vibe: ${horoscope.energy}
+        
+        For your hustle and goals: ${horoscope.career}
+        
+        And looking at the chic movements of the stars: ${horoscope.planets}
+        
+        Stay magical.
+      `;
+      
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: fullTextToRead, voice: 'Zephyr' })
+      });
+
+      if (!response.ok) throw new Error('Failed to generate audio');
+      const { audio } = await response.json();
+
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+
+      const audioCtx = audioCtxRef.current;
+      
+      // Decode base64 PCM 16-bit data
+      const binaryString = atob(audio);
+      const len = binaryString.length;
+      const bytes = new Int16Array(len / 2);
+      for (let i = 0; i < len; i += 2) {
+        bytes[i / 2] = (binaryString.charCodeAt(i + 1) << 8) | binaryString.charCodeAt(i);
+      }
+      
+      const float32 = new Float32Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) {
+        float32[i] = bytes[i] / 32768.0;
+      }
+      
+      const buffer = audioCtx.createBuffer(1, float32.length, 24000);
+      buffer.getChannelData(0).set(float32);
+      
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+      
+      source.onended = () => {
+        setIsPlaying(false);
+        sourceNodeRef.current = null;
+      };
+
+      sourceNodeRef.current = source;
+      source.start();
+      setIsPlaying(true);
+      setIsGeneratingAudio(false);
+    } catch (err: any) {
+      console.error('Audio playback error:', err);
+      setAudioError('Failed to read horoscope');
+      setIsGeneratingAudio(false);
+    }
+  };
 
   const signData = ZODIAC_SIGNS.find(s => s.name === sign);
 
@@ -46,8 +142,8 @@ export default function HoroscopeView({ sign, onClose }: HoroscopeViewProps) {
   const handleShare = async () => {
     if (!horoscope) return;
     
-    const shareText = `${signData?.symbol} #${sign} | Signal Received for ${formattedDate}\n\n"${horoscope.short.general}"\n\nRead your full reading on Celestial Connect:`;
-    const shareUrl = window.location.href;
+    const shareText = `✨ Listen to my daily signal for ${signData?.symbol} #${sign} on Taurus Is Magic!\n\n"${horoscope.short.general}"\n\nHear the full reading here:`;
+    const shareUrl = `${window.location.origin}/?sign=${sign.toLowerCase()}`;
 
     if (navigator.share) {
       try {
@@ -222,10 +318,63 @@ export default function HoroscopeView({ sign, onClose }: HoroscopeViewProps) {
               
               <div className="space-y-12 relative z-10">
                 <div className="space-y-6">
-                  <div className="flex items-center gap-4 text-taurus-gold">
-                    <Globe className="w-6 h-6" />
-                    <h4 className="text-xs font-black uppercase tracking-[0.4em] opacity-80">Your Day</h4>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-taurus-gold">
+                      <Globe className="w-6 h-6" />
+                      <h4 className="text-xs font-black uppercase tracking-[0.4em] opacity-80">Your Day</h4>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {audioError && <span className="text-[10px] text-red-500 font-bold uppercase tracking-tighter">{audioError}</span>}
+                      <button 
+                        onClick={toggleAudio}
+                        disabled={isGeneratingAudio}
+                        className={cn(
+                          "flex items-center justify-center h-12 w-12 rounded-full border border-taurus-gold/30 transition-all active:scale-95 shadow-[0_0_20px_rgba(212,175,55,0.1)]",
+                          isPlaying 
+                            ? "bg-taurus-gold text-space-bg" 
+                            : "bg-taurus-gold/10 text-taurus-gold hover:bg-taurus-gold hover:text-space-bg"
+                        )}
+                        title={isPlaying ? "Stop Reading" : "Hear Your Daily Signal"}
+                      >
+                        {isGeneratingAudio ? (
+                          <Loader2 size={18} className="animate-spin" />
+                        ) : isPlaying ? (
+                          <Pause size={18} fill="currentColor" />
+                        ) : (
+                          <Play size={18} fill="currentColor" className="ml-0.5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Waveform Animation */}
+                  <AnimatePresence>
+                    {isPlaying && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 40 }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="flex items-end justify-center gap-1 overflow-hidden"
+                      >
+                        {[...Array(20)].map((_, i) => (
+                          <motion.div
+                            key={i}
+                            animate={{ 
+                              height: [10, Math.random() * 30 + 10, 10],
+                            }}
+                            transition={{ 
+                              duration: 0.5 + Math.random() * 0.5, 
+                              repeat: Infinity,
+                              ease: "easeInOut"
+                            }}
+                            className="w-1 bg-taurus-gold/40 rounded-full"
+                          />
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <p className={cn(
                     "text-cream/90 leading-relaxed font-medium transition-all duration-700",
                     viewMode === 'deep' ? "text-xl sm:text-2xl md:text-3xl" : "text-lg sm:text-xl italic font-serif"

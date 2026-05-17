@@ -149,7 +149,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
               >
                 <div className="text-center mb-10">
                   <h2 className="text-4xl font-display font-medium text-light-gold tracking-tight italic mb-3">
-                    Post to the Tribe
+                    Post your event or a job
                   </h2>
                   <p className="text-cream/50 text-sm font-light tracking-widest uppercase">
                     Share a job or event with the community

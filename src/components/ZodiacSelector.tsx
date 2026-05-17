@@ -13,14 +13,14 @@ export default function ZodiacSelector({ onSelect, className }: ZodiacSelectorPr
 
   React.useEffect(() => {
     const updateRadius = () => {
-      const width = window.innerWidth;
+      const width = Math.min(window.innerWidth, 1200); // Caps radius for ultra-wide
       const height = window.innerHeight;
       const minDimension = Math.min(width, height);
       
       // Orbital refinement: Perfect spacing to clear the globe
-      if (width < 640) setRadius(minDimension * 0.45);
-      else if (width < 1024) setRadius(minDimension * 0.42);
-      else setRadius(Math.min(height * 0.42, 450));
+      if (width < 640) setRadius(minDimension * 0.35);
+      else if (width < 1024) setRadius(minDimension * 0.38);
+      else setRadius(Math.min(height * 0.38, 400));
     };
     updateRadius();
     window.addEventListener('resize', updateRadius);
@@ -28,7 +28,7 @@ export default function ZodiacSelector({ onSelect, className }: ZodiacSelectorPr
   }, []);
 
   return (
-    <div className={cn("fixed inset-0 flex items-center justify-center z-10", className)}>
+    <div className={cn("relative w-full aspect-square max-w-[90vh] flex items-center justify-center z-10", className)}>
       {/* 2.0 Background Orbital Geometry synced with radius */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div 
@@ -44,7 +44,7 @@ export default function ZodiacSelector({ onSelect, className }: ZodiacSelectorPr
       <motion.div 
         animate={{ rotate: 360 }}
         transition={{ duration: 180, repeat: Infinity, ease: "linear" }}
-        className="absolute w-0 h-0 pointer-events-none flex items-center justify-center"
+        className="relative w-0 h-0 pointer-events-none flex items-center justify-center"
       >
         {ZODIAC_SIGNS.map((sign, index) => {
           const angle = (index / ZODIAC_SIGNS.length) * 2 * Math.PI - Math.PI / 2;

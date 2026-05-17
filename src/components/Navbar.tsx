@@ -1,8 +1,9 @@
 import React from "react";
-import { ShieldCheck, User as UserIcon, Send, Instagram, Twitter, Music, Ghost, DollarSign } from "lucide-react";
+import { ShieldCheck, User as UserIcon, Send, Instagram, Twitter, Music, Ghost, DollarSign, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import NotificationBell from "./NotificationBell";
 import { useNotifications } from "@/hooks/useNotifications";
 
@@ -16,6 +17,7 @@ interface NavbarProps {
 export default function Navbar({ memberCount: realMemberCount, onJoinClick, onProfileClick, className }: NavbarProps) {
   const [activeJitter, setActiveJitter] = React.useState(12);
   const { user, profile, signInWithGoogle } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   React.useEffect(() => {
     // Subtle live jitter to represent "current online seekers"
@@ -69,8 +71,16 @@ export default function Navbar({ memberCount: realMemberCount, onJoinClick, onPr
 
       {/* Right side: Action */}
       <div className="flex items-center gap-6">
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-full bg-white/5 border border-white/10 text-taurus-gold hover:bg-white/10 transition-all"
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </button>
+
         <div className="flex flex-col items-center gap-3">
-          {user ? (
+          {user && (
             <div className="flex items-center gap-4">
               <NotificationBell />
 
@@ -90,14 +100,6 @@ export default function Navbar({ memberCount: realMemberCount, onJoinClick, onPr
                 </span>
               </button>
             </div>
-          ) : (
-            <button
-               onClick={() => signInWithGoogle()}
-               className="hidden md:flex flex-col items-center justify-center px-4 py-1 hover:bg-white/5 rounded-xl transition-all"
-            >
-               <span className="text-[8px] font-black uppercase text-cream/40 mb-0.5">Start Your Journey</span>
-               <span className="text-[10px] font-black text-taurus-gold tracking-widest">JOIN US</span>
-            </button>
           )}
 
           <Button 
@@ -110,52 +112,51 @@ export default function Navbar({ memberCount: realMemberCount, onJoinClick, onPr
             <span className="xs:hidden">Post</span>
           </Button>
 
-          <div className="flex items-center gap-5 px-2">
+          <div className="flex items-center gap-6 px-2">
             <a 
               href="https://open.spotify.com/user/taurusismagic?utm_source=chatgpt.com" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-[#FF69B4] hover:text-white transition-colors"
+              className="text-[#FF69B4] hover:text-white transition-all transform hover:scale-125"
               title="Spotify"
             >
-              <Music className="w-4 h-4" />
+              <Music className="w-6 h-6 md:w-7 md:h-7" />
             </a>
             <a 
               href="https://x.com/taurusismagic?utm_source=chatgpt.com" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-[#FF69B4] hover:text-white transition-colors"
+              className="text-[#FF69B4] hover:text-white transition-all transform hover:scale-125"
               title="X (Twitter)"
             >
-              <Twitter className="w-4 h-4" />
+              <Twitter className="w-6 h-6 md:w-7 md:h-7" />
             </a>
             <a 
               href="https://www.instagram.com/taurusismagic/?utm_source=chatgpt.com" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-[#FF69B4] hover:text-white transition-colors"
+              className="text-[#FF69B4] hover:text-white transition-all transform hover:scale-125"
               title="Instagram"
             >
-              <Instagram className="w-4 h-4" />
+              <Instagram className="w-6 h-6 md:w-7 md:h-7" />
             </a>
             <a 
               href="https://www.snapchat.com/@taurusismagic?utm_source=chatgpt.com" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-[#FF69B4] hover:text-white transition-colors"
+              className="text-[#FF69B4] hover:text-white transition-all transform hover:scale-125"
               title="Snapchat"
             >
-              <Ghost className="w-4 h-4" />
+              <Ghost className="w-6 h-6 md:w-7 md:h-7" />
             </a>
             <a 
               href="https://cash.app/$Taurusismagic" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="group flex items-center gap-1.5 text-[#FF69B4] hover:text-white transition-colors"
+              className="text-[#FF69B4] hover:text-white transition-all transform hover:scale-125"
               title="CashApp"
             >
-              <DollarSign className="w-4 h-4" />
-              <span className="text-[9px] font-black tracking-widest hidden lg:inline">$Taurusismagic</span>
+              <DollarSign className="w-7 h-7 md:w-8 md:h-8" />
             </a>
           </div>
         </div>

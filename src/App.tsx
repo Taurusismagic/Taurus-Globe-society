@@ -9,6 +9,7 @@ import ProfilePanel from "@/components/ProfilePanel";
 import Navbar from "@/components/Navbar";
 import CosmicErrorBoundary from "@/components/CosmicErrorBoundary";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import PostModal from "@/components/PostModal";
 import { useMembers } from "@/hooks/useMembers";
 import { usePosts } from "@/hooks/usePosts";
@@ -21,6 +22,7 @@ import OnboardingModal from "@/components/OnboardingModal";
 
 function MainApp() {
   const { user, profile, isAdmin } = useAuth();
+  const { theme } = useTheme();
   const { members } = useMembers();
   const { posts } = usePosts();
   const { signals, addSignal } = useSignals();
@@ -34,6 +36,22 @@ function MainApp() {
   const [selectedSign, setSelectedSign] = useState<string | null>(null);
   const [showSelector, setShowSelector] = useState(false);
   const [transitionData, setTransitionData] = useState<{ sign: string; pos: { x: number; y: number } } | null>(null);
+
+  // Deep link handling for sharing
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const signParam = params.get('sign');
+    if (signParam) {
+      const match = ZODIAC_SIGNS.find(s => s.name.toLowerCase() === signParam.toLowerCase());
+      if (match) {
+        setSelectedSign(match.name);
+        // Clear param so it doesn't re-open on refresh if closed
+        const url = new URL(window.location.href);
+        url.searchParams.delete('sign');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }, []);
 
   // Trigger onboarding if logged in but no profile
   useEffect(() => {
@@ -78,7 +96,7 @@ function MainApp() {
   return (
     <div 
       onClick={handleGlobalClick}
-      className="relative min-h-dvh w-full bg-space-bg text-cream font-sans selection:bg-taurus-gold/30 overflow-hidden"
+      className="relative min-h-dvh w-full bg-background text-foreground font-sans selection:bg-taurus-gold/30 overflow-hidden transition-colors duration-500"
     >
       <div className="scanline" />
       
@@ -91,8 +109,8 @@ function MainApp() {
       {/* 1. Cinematic Globe Layer (Fixed in background) */}
       <div className="fixed inset-0 z-0 flex items-center justify-center overflow-hidden">
         {/* Deep Starfield Backdrop */}
-        <div className="absolute inset-0 star-field opacity-30 animate-pulse-slow" />
-        <div className="absolute inset-0 star-field opacity-20 rotate-45 scale-150 animate-pulse-slow-reverse" />
+        <div className={cn("absolute inset-0 star-field animate-pulse-slow transition-opacity duration-1000", theme === 'dark' ? "opacity-30" : "opacity-10 grayscale invert")} />
+        <div className={cn("absolute inset-0 star-field animate-pulse-slow-reverse transition-opacity duration-1000 rotate-45 scale-150", theme === 'dark' ? "opacity-20" : "opacity-5 grayscale invert")} />
         
         {/* Atmosphere Glows */}
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_20%_30%,_#00F5FF_0%,_transparent_50%)]" />
@@ -252,7 +270,7 @@ function MainApp() {
 
       <ChatBar onSendMessage={addSignal} />
 
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-space-bg/80 via-transparent to-space-bg/40" />
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-background/80 via-transparent to-background/40" />
     </div>
   );
 }
@@ -260,9 +278,11 @@ function MainApp() {
 export default function App() {
   return (
     <CosmicErrorBoundary>
-      <AuthProvider>
-        <MainApp />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <MainApp />
+        </AuthProvider>
+      </ThemeProvider>
     </CosmicErrorBoundary>
   );
 }

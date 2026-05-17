@@ -25,9 +25,19 @@ if (admin.apps.length === 0) {
 }
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const genAI = process.env.GEMINI_API_KEY ? new (GoogleGenAI as any)({ apiKey: process.env.GEMINI_API_KEY }) : null;
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenAI({ 
+  apiKey: process.env.GEMINI_API_KEY,
+  httpOptions: {
+    headers: {
+      'User-Agent': 'aistudio-build',
+    }
+  }
+}) : null;
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
 const firestore = getFirestore(firebaseConfig.firestoreDatabaseId);
+
+// Import Modality for TTS
+import { Modality } from "@google/genai";
 
 const SEED_REQUESTS = [
   { message: "Who else is feeling magical today? 🌟", city: "New York City", lat: 40.7128, lng: -74.0060 },
@@ -151,53 +161,82 @@ async function startServer() {
     }
 
     try {
-      const model = (genAI as any).getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-        systemInstruction: "You are the 'Taurus Is Magic' Star Guide. You are a wise, kind, and magical astrologer who helps people understand their day. Your voice is encouraging and mystical, but you use simple words that a 14-year-old would understand. You explain complex star movements in a way that feels like a story."
-      });
-
       const prompt = `Generate a magical daily reading for ${sign} on ${dayName}, ${dateId}. 
       
       Style Guidelines:
-      - Vibe: Friendly, magical, and easy to understand.
-      - Topic 1 (Love): Friendships and how to be a good friend.
-      - Topic 2 (Energy): Mood and how to feel balanced.
-      - Topic 3 (Career): School work, hobbies, and goals.
-      - Topic 4 (Planets): Simple explanation of where the planets are and what that means for our feelings.
-      - Birthday Season context: ${isBirthdaySeason ? "It's their birthday season! Make it extra special." : "Standard day."}
+      - Vibe: Friendly, magical, and sophisticated yet simple—like a high-end fashion magazine (Cosmopolitan or Vogue).
+      - Topic 1 (Love): Friendships and romance.
+      - Topic 2 (Energy): Physical and emotional vibe.
+      - Topic 3 (Career): Ambitions, goals, and productivity.
+      - Topic 4 (Planets): Chic explanation of celestial movements.
+      - Birthday Season context: ${isBirthdaySeason ? "It's their birthday season! Give them the front-cover treatment." : "Standard day."}
 
       Format JSON exactly:
       {
-        "general": "5 magical sentences + 1 fun daily tip",
-        "love": "3 kind sentences about friends",
-        "energy": "3 positive sentences about mood",
-        "career": "3 encouraging sentences about school/goals",
-        "planets": "5 simple sentences about the moon and stars today",
+        "general": "Maximum 50 words. A punchy, stylish summary of the day's energy + 1 chic daily tip.",
+        "love": "3 stylish sentences about connection",
+        "energy": "3 stylish sentences about wellness/vibe",
+        "career": "3 stylish sentences about hustle/goals",
+        "planets": "5 simple sentences about the current astrology",
         "alignment_score": number (1-100),
         "power_hours": "e.g. 3:00 PM & Bedtime",
         "short_general": "1 quick magical sentence",
-        "short_love": "1 quick sentence about friends",
+        "short_love": "1 quick sentence about connection",
         "short_energy": "1 quick sentence about mood",
         "short_career": "1 quick sentence about goals",
         "short_planets": "1 simple sentence about the sky"
       }`;
 
-      const result = await model.generateContent({
+      const result = await genAI.models.generateContent({
+        model: "gemini-3-flash-preview",
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
+        config: {
+          systemInstruction: "You are the 'Taurus Is Magic' Star Guide. You are a wise, kind, and magical astrologer who helps people understand their day. Your voice is encouraging and mystical, but you use simple words that a 14-year-old would understand. You explain complex star movements in a way that feels like a story.",
           responseMimeType: "application/json",
           temperature: 0.9,
         }
       });
 
-      const response = await result.response;
-      let text = response.text();
-      text = text.replace(/```json\n?|```/g, "").trim();
-      
-      const data = JSON.parse(text);
+      const data = JSON.parse(result.text);
       res.json(data);
     } catch (err: any) {
       console.error(`[Horoscope API] Error: ${err.message}`);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // API: Text-to-Speech
+  app.post('/api/tts', async (req, res) => {
+    const { text, voice = 'Zephyr' } = req.body;
+    
+    if (!genAI) {
+      return res.status(500).json({ error: 'Gemini API not configured' });
+    }
+
+    try {
+      const response = await genAI.models.generateContent({
+        model: "gemini-3.1-flash-tts-preview",
+        contents: [{ parts: [{ text: `Say with a magical, gentle, and wise tone: ${text}` }] }],
+        config: {
+          responseModalities: [Modality.AUDIO],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: voice as any },
+            },
+          },
+        },
+      });
+
+      const audioPart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+      const base64Audio = audioPart?.inlineData?.data;
+
+      if (base64Audio) {
+        res.json({ audio: base64Audio });
+      } else {
+        res.status(500).json({ error: 'Failed to generate audio' });
+      }
+    } catch (err: any) {
+      console.error(`[TTS API] Error: ${err.message}`);
       res.status(500).json({ error: err.message });
     }
   });

@@ -1,6 +1,6 @@
 {
   "name": "Taurus Is Magic",
-  "description": "A magical place for Taurus and friends to explore the stars together. See your daily horoscope, talk to friends, and share your dreams.",
+  "description": "A magical place for Taurus and friends to explore the stars together. See your daily horoscope, talk to friends, and post events or jobs.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
