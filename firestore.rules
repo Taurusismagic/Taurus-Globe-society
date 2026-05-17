@@ -29,8 +29,8 @@ service cloud.firestore {
     }
 
     match /profiles/{userId} {
-      allow get: if (existing().is_visible == true || isSignedIn());
-      allow list: if (existing().is_visible == true || isSignedIn());
+      allow get: if (existing().is_visible == true || isOwner(userId) || isAdmin());
+      allow list: if (existing().is_visible == true || isOwner(userId) || isAdmin());
       
       allow create: if isOwner(userId) &&
                        isValidProfile(incoming()) &&
@@ -157,7 +157,8 @@ service cloud.firestore {
     }
 
     match /daily_horoscopes/{dateId} {
-      allow read, write: if true; 
+      allow read: if true; 
+      allow write: if isAdmin();
     }
 
     // Posts Validation
@@ -177,6 +178,11 @@ service cloud.firestore {
       allow create: if isValidPost(incoming()) && 
                        incoming().created_at == request.time;
       allow update, delete: if isAdmin();
+    }
+
+    match /tribe_seeds/{seedId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
     }
   }
 }

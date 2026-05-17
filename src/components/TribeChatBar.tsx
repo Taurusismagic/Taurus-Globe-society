@@ -3,13 +3,14 @@ import { motion, AnimatePresence } from "motion/react";
 import { Send, MapPin, X, ArrowRight, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCityCoordinates } from "@/lib/cities";
+import { isBanality, BANALITY_ERROR } from "@/lib/filter";
 
-interface TribeChatBarProps {
+interface ChatBarProps {
   onSendMessage: (message: string, city: string, coords: [number, number]) => void;
   className?: string;
 }
 
-export default function TribeChatBar({ onSendMessage, className }: TribeChatBarProps) {
+export default function ChatBar({ onSendMessage, className }: ChatBarProps) {
   const [step, setStep] = useState<'message' | 'city'>('message');
   const [message, setMessage] = useState("");
   const [city, setCity] = useState("");
@@ -26,7 +27,16 @@ export default function TribeChatBar({ onSendMessage, className }: TribeChatBarP
 
   const handleNext = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!message.trim()) return;
+    const trimmed = message.trim();
+    if (!trimmed) return;
+    
+    if (isBanality(trimmed)) {
+      setError(BANALITY_ERROR);
+      setMessage(""); // Clear the rot
+      setTimeout(() => setError(null), 3500);
+      return;
+    }
+    
     setStep('city');
   };
 
@@ -64,8 +74,8 @@ export default function TribeChatBar({ onSendMessage, className }: TribeChatBarP
         className="pointer-events-auto"
       >
         <div className={cn(
-          "relative h-14 md:h-16 bg-black/90 backdrop-blur-2xl rounded-full border border-white/10 shadow-2xl flex items-center transition-all duration-500 overflow-hidden",
-          isFocused ? "border-taurus-gold/50 shadow-[0_0_40px_rgba(212,175,55,0.2)] scale-105" : "hover:bg-charcoal"
+          "relative h-14 md:h-16 bg-white/30 backdrop-blur-3xl rounded-full border border-white/60 shadow-[0_0_40px_rgba(255,255,255,0.2)] flex items-center transition-all duration-500 overflow-hidden",
+          isFocused ? "border-taurus-gold shadow-[0_0_50px_rgba(212,175,55,0.6)] scale-[1.02] bg-white/40" : "hover:scale-[1.01] hover:border-white hover:bg-white/40"
         )}>
           <AnimatePresence mode="wait">
             {step === 'message' ? (
@@ -77,23 +87,26 @@ export default function TribeChatBar({ onSendMessage, className }: TribeChatBarP
                 onSubmit={handleNext}
                 className="flex-1 flex items-center h-full px-5 md:px-6"
               >
-                <MessageSquare className="w-5 h-5 text-taurus-gold/60 mr-3 md:mr-4 shrink-0" />
+                <MessageSquare className="w-5 h-5 text-taurus-gold mr-3 md:mr-4 shrink-0" />
                 <input
                   type="text"
-                  placeholder="Write on the wall..."
+                  placeholder={error ? error : "Say something sweet..."}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
-                  className="bg-transparent border-none outline-none flex-1 text-cream placeholder:text-cream/30 text-base font-medium h-full"
+                  className={cn(
+                    "bg-transparent border-none outline-none flex-1 text-white placeholder:text-cream/50 text-base font-medium h-full",
+                    error && "text-red-400 placeholder:text-red-400 font-bold"
+                  )}
                   autoComplete="off"
                 />
                 <button
                   type="submit"
                   disabled={!message.trim()}
-                  className="ml-2 w-10 h-10 md:w-11 md:h-11 rounded-full bg-taurus-gold text-space-bg flex items-center justify-center hover:scale-110 active:scale-90 transition-all disabled:opacity-20 disabled:grayscale shadow-lg shadow-black/40"
+                  className="ml-2 w-10 h-10 md:w-11 md:h-11 rounded-full bg-cyan-400 text-white flex items-center justify-center hover:scale-110 active:scale-90 transition-all disabled:opacity-20 disabled:grayscale shadow-[0_0_20px_rgba(34,211,238,0.4)]"
                 >
-                  <ArrowRight className="w-5 h-5 md:w-6 md:h-6" />
+                  <ArrowRight className="w-5 h-5 md:w-6 md:h-6 stroke-[3px]" />
                 </button>
               </motion.form>
             ) : (
@@ -109,18 +122,18 @@ export default function TribeChatBar({ onSendMessage, className }: TribeChatBarP
                   <button type="button" onClick={() => setStep('message')} className="p-2 hover:bg-white/10 rounded-full text-cream/40 active:scale-75 transition-transform">
                     <X size={16} />
                   </button>
-                  <MapPin className="w-5 h-5 text-taurus-gold animate-pulse" />
+                  <MapPin className="w-5 h-5 text-light-gold animate-pulse" />
                 </div>
                 <input
                   autoFocus
                   type="text"
-                  placeholder={error ? error : "Which city..."}
+                  placeholder={error ? error : "Where are you?"}
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
                   className={cn(
-                    "bg-transparent border-none outline-none flex-1 text-cream placeholder:text-cream/30 text-base font-medium h-full",
+                    "bg-transparent border-none outline-none flex-1 text-white placeholder:text-cream/50 text-base font-medium h-full",
                     error && "text-red-400 placeholder:text-red-400"
                   )}
                   autoComplete="off"
@@ -128,9 +141,9 @@ export default function TribeChatBar({ onSendMessage, className }: TribeChatBarP
                 <button
                   type="submit"
                   disabled={!city.trim()}
-                  className="ml-2 px-6 md:px-8 h-10 md:h-11 rounded-full bg-taurus-gold text-space-bg flex items-center justify-center font-black uppercase text-[10px] md:text-[11px] tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-black/40"
+                  className="ml-2 px-6 md:px-8 h-10 md:h-11 rounded-full bg-cyan-400 text-white flex items-center justify-center font-black uppercase text-[10px] md:text-[11px] tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50 shadow-[0_0_20px_rgba(34,211,238,0.4)]"
                 >
-                  Chat
+                  Send
                 </button>
               </motion.form>
             )}

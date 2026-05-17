@@ -45,23 +45,35 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
     setError(null);
 
     try {
-      // Mock geocoding: In a real app, use Google Maps Geocoding
-      // For this demo, we'll generate coordinates based on the city name hash
-      const cityHash = city.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const lat = (cityHash % 60) - 30 + (Math.random() * 2);
-      const lng = (cityHash % 120) - 60 + (Math.random() * 2);
+      // Geocoding: Call server-side Nexus geocoding
+      const geoResponse = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city })
+      });
+      const geoData = await geoResponse.json();
 
-      // In a real app, you'd upload the file to Firebase Storage first
-      // Here we'll just mock the flyer_url or use the base64 preview if it's small, 
-      // but Firestore has a size limit, so let's just use a placeholder for now
-      // or a small thumbnail if we wanted. Let's just use a placeholder to be safe.
-      const flyerUrl = flyerPreview ? "https://images.unsplash.com/photo-1493612276216-ee3925520721?auto=format&fit=crop&q=80&w=400" : null;
+      // Use actual coordinates or fallback if server fails
+      const lat = geoData.latitude || 0;
+      const lng = geoData.longitude || 0;
+      const formattedCity = geoData.formatted || city;
+
+      // Handle Flyer: In this environment, we'll store the base64 preview directly 
+      // if it's within a reasonable limit, or use a high-fidelity placeholder
+      // that isn't just a generic Unsplash image.
+      let flyerUrl = flyerPreview;
+      
+      // If base64 is too large (> 800KB), we must truncate or use a placeholder to avoid Firestore limits
+      if (flyerUrl && flyerUrl.length > 800000) {
+        console.warn("[Post] Flyer size exceeds 800KB. Using optimized nexus placeholder.");
+        flyerUrl = "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=1200"; // Space themed
+      }
 
       await addDoc(collection(db, 'posts'), {
         title,
         description,
         email,
-        city,
+        city: formattedCity,
         type,
         latitude: lat,
         longitude: lng,

@@ -62,7 +62,7 @@ export default function HoroscopeView({ sign, onClose }: HoroscopeViewProps) {
     }
   };
 
-  const handleEnterTribe = () => {
+  const handleEnterCommunity = () => {
     const etString = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
     const seed = `${sign}_${etString}`;
     
@@ -113,8 +113,8 @@ export default function HoroscopeView({ sign, onClose }: HoroscopeViewProps) {
           </motion.svg>
         </div>
         <div className="text-center space-y-2">
-          <p className="text-sm font-black uppercase tracking-[0.5em] text-taurus-gold animate-pulse">Receiving {sign} Signal</p>
-          <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-cream/20 italic">Decrypting Celestial Data...</p>
+          <p className="text-sm font-black uppercase tracking-[0.5em] text-taurus-gold animate-pulse">Reading {sign}'s Stars</p>
+          <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-cream/20 italic">Consulting the Universe...</p>
         </div>
       </motion.div>
     );
@@ -147,7 +147,7 @@ export default function HoroscopeView({ sign, onClose }: HoroscopeViewProps) {
             className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-cream/60 hover:text-white transition-all group"
           >
             <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Back to Globe</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">Back to World Map</span>
           </button>
 
           <div className="inline-flex items-center gap-3 px-4 py-2 bg-taurus-gold/10 rounded-full border border-taurus-gold/20">
@@ -176,7 +176,7 @@ export default function HoroscopeView({ sign, onClose }: HoroscopeViewProps) {
 
               <div className="flex justify-center pt-8 gap-8 items-center">
                 <div className="text-center group">
-                   <div className="text-[10px] font-black uppercase tracking-[0.2em] text-taurus-gold/50 mb-2">Sync Level</div>
+                   <div className="text-[10px] font-black uppercase tracking-[0.2em] text-taurus-gold/50 mb-2">Cosmic Match</div>
                    <div className="text-4xl font-display italic text-taurus-gold drop-shadow-[0_0_15px_rgba(212,175,55,0.4)]">
                      {horoscope.alignmentScore}%
                    </div>
@@ -224,7 +224,7 @@ export default function HoroscopeView({ sign, onClose }: HoroscopeViewProps) {
                 <div className="space-y-6">
                   <div className="flex items-center gap-4 text-taurus-gold">
                     <Globe className="w-6 h-6" />
-                    <h4 className="text-xs font-black uppercase tracking-[0.4em] opacity-80">The General Vibe</h4>
+                    <h4 className="text-xs font-black uppercase tracking-[0.4em] opacity-80">Your Day</h4>
                   </div>
                   <p className={cn(
                     "text-cream/90 leading-relaxed font-medium transition-all duration-700",
@@ -244,10 +244,10 @@ export default function HoroscopeView({ sign, onClose }: HoroscopeViewProps) {
                       className="space-y-12"
                     >
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        <HoroscopeDetail icon={<Heart size={18} />} title="Love Life" content={viewMode === 'deep' ? horoscope.love : horoscope.short.love} />
-                        <HoroscopeDetail icon={<Zap size={18} />} title="Energy" content={viewMode === 'deep' ? horoscope.energy : horoscope.short.energy} />
-                        <HoroscopeDetail icon={<Briefcase size={18} />} title="Career" content={viewMode === 'deep' ? horoscope.career : horoscope.short.career} />
-                        <HoroscopeDetail icon={<Globe size={18} />} title="Planets & Transits" content={viewMode === 'deep' ? horoscope.planets : horoscope.short.planets} />
+                        <HoroscopeDetail icon={<Heart size={18} />} title="Love & Friendships" content={viewMode === 'deep' ? horoscope.love : horoscope.short.love} />
+                        <HoroscopeDetail icon={<Zap size={18} />} title="Your Mood" content={viewMode === 'deep' ? horoscope.energy : horoscope.short.energy} />
+                        <HoroscopeDetail icon={<Briefcase size={18} />} title="School & Projects" content={viewMode === 'deep' ? horoscope.career : horoscope.short.career} />
+                        <HoroscopeDetail icon={<Globe size={18} />} title="The Stars Today" content={viewMode === 'deep' ? horoscope.planets : horoscope.short.planets} />
                       </div>
                     </motion.div>
                   )}
@@ -261,7 +261,7 @@ export default function HoroscopeView({ sign, onClose }: HoroscopeViewProps) {
                     {isCopied ? (
                       <><Check size={14} className="text-green-500" /><span className="text-green-500">Copied Link</span></>
                     ) : (
-                      <><Share2 size={14} /><span>Share Signal</span></>
+                      <><Share2 size={14} /><span>Share the Magic</span></>
                     )}
                   </button>
 
@@ -303,7 +303,7 @@ export default function HoroscopeView({ sign, onClose }: HoroscopeViewProps) {
                     <span className="text-3xl sm:text-4xl">{signData?.symbol}</span>
                   </div>
                   <div className="space-y-1">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.6em] text-taurus-gold">Daily Frequency</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.6em] text-taurus-gold">Daily Magic</h3>
                     <p className="text-[8px] font-bold text-cream/30 uppercase tracking-widest">{formattedDate}</p>
                   </div>
                 </div>

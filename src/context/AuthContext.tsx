@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, User, signOut as firebaseSignOut } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut as firebaseSignOut, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '@/lib/errorUtils';
 
@@ -26,6 +26,7 @@ interface AuthContextType {
   blockedIds: string[];
   whoBlockedMeIds: string[];
   loading: boolean;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   refreshBlocks: () => Promise<void>;
@@ -105,6 +106,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await firebaseSignOut(auth);
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Sign in failed:", error);
+    }
+  }, []);
+
   const refreshProfile = useCallback(async () => {
     if (user) await fetchProfile(user.uid);
   }, [user]);
@@ -121,6 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     blockedIds, 
     whoBlockedMeIds, 
     loading, 
+    signInWithGoogle,
     signOut, 
     refreshProfile, 
     refreshBlocks, 

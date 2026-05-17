@@ -85,24 +85,31 @@ const Globe = React.memo(({ members, posts = [], signals = [], targetLocation, o
     el.className = 'globe-html-marker';
     
     if (d.markerType === 'signal') {
+        const isSeed = d.isSeed;
+        const colorClass = isSeed ? "text-taurus-gold" : "text-red-500";
+        const bgClass = isSeed ? "border-taurus-gold/50" : "border-red-500/50";
+        const dotClass = isSeed ? "bg-taurus-gold shadow-[0_0_25px_#D4AF37]" : "bg-red-600 shadow-[0_0_25px_#DC2626]";
+        const lineClass = isSeed ? "via-taurus-gold/60 to-taurus-gold" : "via-red-500/60 to-red-600";
+        const label = isSeed ? "COSMIC MESSAGE" : d.city;
+
         el.innerHTML = `
           <div class="signal-flag pointer-events-auto group relative cursor-pointer pt-6 px-10 -mt-6 -mx-10 select-none touch-manipulation">
             <!-- The Bubble -->
             <div class="signal-bubble absolute bottom-full left-1/2 -translate-x-1/2 mb-4 opacity-0 scale-50 transition-all duration-300 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto group-active:opacity-100 group-active:scale-100 group-active:pointer-events-auto">
-               <div class="relative bg-black/95 backdrop-blur-3xl border border-red-500/50 px-5 py-3 rounded-[24px] shadow-[0_0_50px_rgba(0,0,0,0.9)] min-w-[160px] text-center border-b-4">
+               <div class="relative bg-black/95 backdrop-blur-3xl border ${bgClass} px-5 py-3 rounded-[24px] shadow-[0_0_50px_rgba(0,0,0,0.9)] min-w-[160px] text-center border-b-4">
                   <p class="text-[13px] text-cream font-bold leading-snug mb-1">"${d.message}"</p>
-                  <p class="text-[9px] text-red-500 font-black uppercase tracking-[0.2em] opacity-80">${d.city}</p>
+                  <p class="text-[9px] ${colorClass} font-black uppercase tracking-[0.2em] opacity-80">${label}</p>
                   <!-- Arrow -->
-                  <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-black border-r border-b border-red-500/50 rotate-45"></div>
+                  <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-black border-r border-b ${bgClass} rotate-45"></div>
                </div>
             </div>
 
             <!-- The Stalk -->
             <div class="relative flex flex-col items-center">
                <!-- High Visibility Tip -->
-               <div class="w-4 h-4 md:w-3 md:h-3 bg-red-600 rounded-full shadow-[0_0_25px_#DC2626] animate-pulse group-active:scale-150 transition-transform"></div>
+               <div class="w-4 h-4 md:w-3 md:h-3 ${dotClass} rounded-full animate-pulse group-active:scale-150 transition-transform"></div>
                <!-- The Line -->
-               <div class="w-[2px] h-10 md:h-8 bg-gradient-to-t from-transparent via-red-500/60 to-red-600 mt-[-2px]"></div>
+               <div class="w-[2px] h-10 md:h-8 bg-gradient-to-t from-transparent ${lineClass} mt-[-2px]"></div>
             </div>
           </div>
         `;
@@ -120,9 +127,9 @@ const Globe = React.memo(({ members, posts = [], signals = [], targetLocation, o
           </div>
           <div class="absolute -top-16 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-xl border border-taurus-gold/30 px-5 py-3 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[100] shadow-[0_0_40px_rgba(0,0,0,0.8)] scale-90 group-hover:scale-100">
              <div class="flex flex-col items-center">
-               <p class="text-[8px] font-black uppercase tracking-[0.4em] text-taurus-gold mb-1.5">${d.type} IN ${d.city.split(',')[0]}</p>
-               <p class="text-[14px] font-bold text-white tracking-tight leading-none">${d.title}</p>
-               <div class="mt-2.5 text-[9px] text-white/40 font-mono font-medium border-t border-white/10 pt-2 w-full text-center">${d.email}</div>
+                <p class="text-[8px] font-black uppercase tracking-[0.4em] text-taurus-gold mb-1.5">${d.type} IN ${d.city.split(',')[0]}</p>
+                <p class="text-[14px] font-bold text-white tracking-tight leading-none">${d.title}</p>
+                <div class="mt-2.5 text-[9px] text-white/40 font-mono font-medium border-t border-white/10 pt-2 w-full text-center">${d.email}</div>
              </div>
           </div>
         </div>
@@ -135,7 +142,7 @@ const Globe = React.memo(({ members, posts = [], signals = [], targetLocation, o
           <div class="absolute inset-0 w-12 h-12 -left-4.5 -top-4.5 rounded-full animate-ping opacity-5" style="background-color: ${signalColor};"></div>
           
           <div class="absolute -bottom-12 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-[100] scale-90 group-hover:scale-100">
-             <p class="text-[10px] font-bold text-cream">${d.display_name || "Initiating..."}</p>
+             <p class="text-[10px] font-bold text-cream">${d.display_name || "Joining..."}</p>
           </div>
         </div>
       `;

@@ -17,10 +17,11 @@ import { ZODIAC_SIGNS } from "@/constants";
 import ChatPanel from "@/components/ChatPanel";
 import AdminPanel from "@/components/AdminPanel";
 import PaywallModal from "@/components/PaywallModal";
-import TribeChatBar from "@/components/TribeChatBar";
+import ChatBar from "@/components/TribeChatBar";
+import OnboardingModal from "@/components/OnboardingModal";
 
 function MainApp() {
-  const { profile, isAdmin } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const { members } = useMembers();
   const { posts } = usePosts();
   const { signals, addSignal } = useSignals();
@@ -30,10 +31,23 @@ function MainApp() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   
   const [selectedSign, setSelectedSign] = useState<string | null>(null);
   const [showSelector, setShowSelector] = useState(false);
   const [transitionData, setTransitionData] = useState<{ sign: string; pos: { x: number; y: number } } | null>(null);
+
+  // Trigger onboarding if logged in but no profile
+  useEffect(() => {
+    if (user && !profile) {
+      const timer = setTimeout(() => {
+        setIsOnboardingOpen(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    } else if (profile) {
+      setIsOnboardingOpen(false);
+    }
+  }, [user, profile]);
 
   // Auto-show selector after 5 seconds or upon first click
   useEffect(() => {
@@ -88,13 +102,10 @@ function MainApp() {
         
         {/* Centered Globe Container */}
         <div className="relative w-full h-full flex items-center justify-center p-4">
-          <div 
-            className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 perspective-[1000px]"
-            style={{ transform: 'rotateX(65deg)' }}
-          >
-             <div className="w-[85vw] h-[85vw] md:w-[900px] md:h-[900px] rounded-full border border-taurus-gold/10 animate-spin-slow shadow-[0_0_100px_rgba(212,175,55,0.05)]" />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+             <div className="w-[85vw] h-[85vw] md:w-[900px] md:h-[900px] rounded-full border border-taurus-gold/10 animate-spin-slow" />
              <div className="absolute w-[70vw] h-[70vw] md:w-[700px] md:h-[700px] rounded-full border border-taurus-gold/5 animate-spin-slow-reverse" />
-             <div className="absolute w-[50vw] h-[50vw] md:w-[500px] md:h-[500px] rounded-full border border-white/5 opacity-50 shadow-inner" />
+             <div className="absolute w-[50vw] h-[50vw] md:w-[500px] md:h-[500px] rounded-full border border-white/5 opacity-50" />
           </div>
           <Globe 
             members={members} 
@@ -107,8 +118,8 @@ function MainApp() {
 
       {/* 2. UI Layers */}
       <div className="relative z-10 w-full min-h-dvh flex flex-col pointer-events-none">
-        <main className="flex-1 relative flex flex-col items-center justify-between py-12 sm:py-16 md:py-24">
-          {/* Top Title - Refined for 2.0 */}
+        <main className="flex-1 w-full relative flex items-center justify-center">
+          {/* Top Title - Absolutely positioned for perfect vertical centering of globe */}
           <AnimatePresence>
             {!showSelector && !selectedSign && !transitionData && (
               <motion.div 
@@ -116,7 +127,7 @@ function MainApp() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 0, filter: 'blur(10px)' }}
                 transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-                className="relative z-10 text-center pointer-events-none mt-16 sm:mt-24 px-6"
+                className="absolute top-24 sm:top-32 md:top-40 z-10 text-center px-6 w-full"
               >
                 <div className="inline-block relative">
                    <motion.div 
@@ -137,7 +148,7 @@ function MainApp() {
                <motion.div 
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="relative z-10 text-center pointer-events-none mt-10 md:mt-8 px-6"
+                className="absolute top-24 sm:top-32 md:top-40 z-10 text-center px-6 w-full"
               >
                 <h1 className="text-3xl md:text-5xl font-display font-medium text-light-gold tracking-tight drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] italic">
                    What's your sign?
@@ -146,8 +157,8 @@ function MainApp() {
             )}
           </AnimatePresence>
 
-          {/* Central Globe & Selector Area */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          {/* Central Interaction Area - Perfectly Centered */}
+          <div className="relative z-20 w-full flex items-center justify-center p-4">
             <AnimatePresence mode="wait">
               {showSelector && !selectedSign && !transitionData && (
                 <motion.div
@@ -155,7 +166,7 @@ function MainApp() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 1.05 }}
-                  className="absolute inset-0 z-20 flex items-center justify-center"
+                  className="w-full flex items-center justify-center"
                 >
                   <ZodiacSelector 
                     onSelect={handleSignSelect} 
@@ -165,15 +176,15 @@ function MainApp() {
             </AnimatePresence>
           </div>
 
-          {/* Bottom Subtext - Matches Screenshot 2 */}
+          {/* Bottom Subtext */}
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1 }}
-            className="relative z-10 text-center pointer-events-none mb-12"
+            className="absolute bottom-24 sm:bottom-32 md:bottom-40 z-10 text-center px-6 w-full"
           >
-             <p className="text-cream/50 text-sm md:text-lg font-accent font-light tracking-[0.3em] md:tracking-[0.6em] uppercase">
-               Let the Taurus community help you
+             <p className="text-cream/50 text-[10px] sm:text-sm md:text-lg font-accent font-light tracking-[0.3em] md:tracking-[0.6em] uppercase">
+                Join us and explore the stars
              </p>
           </motion.div>
         </main>
@@ -243,9 +254,15 @@ function MainApp() {
             onClose={() => setIsPostModalOpen(false)} 
           />
         )}
+        {isOnboardingOpen && (
+          <OnboardingModal 
+            isOpen={isOnboardingOpen}
+            onClose={() => setIsOnboardingOpen(false)}
+          />
+        )}
       </AnimatePresence>
 
-      <TribeChatBar onSendMessage={addSignal} />
+      <ChatBar onSendMessage={addSignal} />
 
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-space-bg/80 via-transparent to-space-bg/40" />
     </div>

@@ -62,17 +62,17 @@ export default function PaywallModal({ isOpen, onClose }: PaywallModalProps) {
         <div className="p-12 text-center">
           <h2 className="text-4xl font-black mb-4 text-cream tracking-tight">The Inner Circle.</h2>
           <p className="text-cream/50 mb-10 font-medium max-w-xs mx-auto">
-            Upgrade your frequency. Join the elite sovereign tribe and manifest your global presence.
+            Upgrade your life. Join our magic community and share your story with the world.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-12 text-left px-4">
             {[
-              "Join Global Nexus Chat",
-              "Access Architect Directory",
-              "Direct Frequency Signals",
-              "Elite 'Elite' Badge",
-              "Priority Access to Tribe Events",
-              "Glinting Sovereign Node"
+              "Chat with everyone",
+              "Find cool people",
+              "Get special messages",
+              "Special badge",
+              "Invites to events",
+              "A glowing profile"
             ].map((feature, i) => (
               <div key={`feature-${i}`} className="flex items-center gap-4 group">
                 <div className="w-5 h-5 rounded-full bg-taurus-gold/10 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -87,8 +87,8 @@ export default function PaywallModal({ isOpen, onClose }: PaywallModalProps) {
             <div className="absolute inset-0 bg-taurus-gold/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
             <div className="flex items-center justify-between relative z-10">
               <div className="text-left">
-                <div className="text-[10px] font-black text-taurus-gold uppercase tracking-[0.2em] mb-1.5 whitespace-nowrap">Membership Tier</div>
-                <div className="text-2xl font-black text-cream tracking-tight">Tribe Explorer</div>
+                <div className="text-[10px] font-black text-taurus-gold uppercase tracking-[0.2em] mb-1.5 whitespace-nowrap">Membership</div>
+                <div className="text-2xl font-black text-cream tracking-tight">World Explorer</div>
               </div>
               <div className="text-right">
                 <div className="text-3xl font-black text-taurus-gold">$12.99</div>
@@ -108,7 +108,7 @@ export default function PaywallModal({ isOpen, onClose }: PaywallModalProps) {
               ) : (
                 <>
                   <CreditCard className="w-6 h-6" />
-                  <span className="font-black uppercase tracking-[0.2em] text-sm">Initialize Membership</span>
+                  <span className="font-black uppercase tracking-[0.2em] text-sm">Join the Club</span>
                   <motion.div 
                     className="absolute inset-x-0 bottom-0 h-1 bg-white/20"
                     initial={{ x: "-100%" }}

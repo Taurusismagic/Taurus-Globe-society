@@ -4,16 +4,19 @@
 A cinematic, technical astrological platform built for the "Taurus Is Magic" community. 2.0 focuses on state-of-the-art UI, real-time connectivity, and high-fidelity AI personality.
 
 ## Core Pillars
-1. **Cinematic Design**: Space-modern aesthetic.
+1. **Cinematic Design**: Space-magical aesthetic.
    - **Colors**: Deepest charcoal (#05070A), Taurus Gold (#D4AF37), Light Gold (#F5E6C0).
-   - **Typography**: Display: Serif/Italic (cinematic feeling). UI: Mono/Sans (technical feeling).
-   - **Interaction**: Everything must feel "weighted" and orbital. No jerky movements.
+   - **Typography**: Display: Serif/Italic (magical feeling). UI: Sans (simple, clean feeling).
+   - **Interaction**: Everything must feel "weighted" and smooth. No jerky movements.
 2. **Real-time Connectivity**: The "Tribe" is alive.
    - Use Firebase to drive active member counts and user profiles.
-   - The UI should always reflect that other users are in the "Sync".
-3. **AI Intelligence**: The Astrologer is technical and deep.
-   - Persona: Technical, profound, using Gary Goldschneider's Personology as a framework.
-   - Output: Dual-mode (Pulse/Deep).
+   - The UI should always show that other friends are in the "Cosmic Space".
+3. **AI Intelligence**: The Astrologer is wise and friendly.
+   - Persona: Wise, encouraging, and uses simple language that a 14-year-old can enjoy. Uses Gary Goldschneider's Personology as a base but keeps it easy to read.
+   - Output: Clear, magical, and positive.
+4. **The High-Fidelity Filter**: The Tribe values real talk.
+   - We skip the boring "hi" and "hello" messages.
+   - Every post should share a feeling, a dream, or something interesting about the stars.
 
 ## Tech Stack
 -   **Frontend**: React + Vite + Tailwind CSS + Framer Motion.

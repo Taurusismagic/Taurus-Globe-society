@@ -1,6 +1,8 @@
 {
   "name": "Taurus Is Magic",
-  "description": "Taurus Is Magic 2.0: A next-generation cinematic astrological experience. Features technical AI-powered horoscopes, 3D orbital navigation, and real-time connectivity for the global tribe.",
+  "description": "A magical place for Taurus and friends to explore the stars together. See your daily horoscope, talk to friends, and share your dreams.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

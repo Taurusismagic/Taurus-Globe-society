@@ -192,9 +192,27 @@
         "created_at": { "type": "string", "format": "date-time" }
       },
       "required": ["user_id", "status", "tier", "created_at"]
+    },
+    "TribeSeed": {
+      "title": "Tribe Seed Signal",
+      "description": "Daily request or signal seeded by the system.",
+      "type": "object",
+      "properties": {
+        "message": { "type": "string" },
+        "city": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "date": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["message", "city", "lat", "lng", "date", "created_at"]
     }
   },
   "firestore": {
+    "/tribe_seeds/{seedId}": {
+      "schema": "TribeSeed",
+      "description": "System-generated daily signals to encourage activity."
+    },
     "/posts/{postId}": {
       "schema": "Post",
       "description": "Collection of community job/event posts"

@@ -14,8 +14,9 @@ import {
   getDoc,
   limit
 } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { handleFirestoreError, OperationType } from '@/lib/errorUtils';
+import { useAuth } from '@/context/AuthContext';
 
 export interface Notification {
   id: string;
@@ -44,12 +45,13 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
 };
 
 export function useNotifications() {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
   const [loading, setLoading] = useState(true);
 
-  const userId = auth.currentUser?.uid;
+  const userId = user?.uid;
 
   useEffect(() => {
     if (!userId) {

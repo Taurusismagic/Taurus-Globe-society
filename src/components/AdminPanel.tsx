@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Shield, AlertCircle, CheckCircle2, MessageSquare, User, Trash2, Eye, Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, orderBy, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, orderBy, getDocs, doc, updateDoc, writeBatch } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { handleFirestoreError, OperationType } from "@/lib/errorUtils";
+import { useAuth } from "@/context/AuthContext";
 
 interface AdminPanelProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
+  const { isAdmin } = useAuth();
   const [reports, setReports] = useState<any[]>([]);
   const [promos, setPromos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,24 +24,24 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const reportsRef = collection(db, 'reports');
-      let reportsQ = query(reportsRef, orderBy('created_at', 'desc'));
-      if (filter !== 'all') {
-        reportsQ = query(reportsRef, where('status', '==', filter), orderBy('created_at', 'desc'));
+      if (tab === 'reports') {
+        const reportsRef = collection(db, 'reports');
+        let reportsQ = query(reportsRef, orderBy('created_at', 'desc'));
+        if (filter !== 'all') {
+          reportsQ = query(reportsRef, where('status', '==', filter), orderBy('created_at', 'desc'));
+        }
+        const reportsSnap = await getDocs(reportsQ);
+        setReports(reportsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } else {
+        const promosRef = collection(db, 'promotion_requests');
+        const promosQ = query(promosRef, orderBy('created_at', 'desc'));
+        const promosSnap = await getDocs(promosQ).catch(err => {
+           return { docs: [] } as any;
+        });
+        setPromos(promosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       }
-      const reportsSnap = await getDocs(reportsQ);
-      setReports(reportsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-      const promosRef = collection(db, 'promotion_requests');
-      const promosQ = query(promosRef, orderBy('created_at', 'desc'));
-      const promosSnap = await getDocs(promosQ).catch(err => {
-         // This might fail if the collection doesn't exist yet, but we'll catch it
-         return { docs: [] } as any;
-      });
-      setPromos(promosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
     } catch (err) {
-      handleFirestoreError(err, OperationType.LIST, 'admin_fetch');
+      handleFirestoreError(err, OperationType.LIST, tab);
     } finally {
       setLoading(false);
     }
@@ -51,10 +53,20 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
     }
   }, [isOpen, filter, tab]);
 
-  const handleAction = async (reportId: string, action: 'reviewed' | 'resolved') => {
+  const handleAction = async (reportId: string, action: 'reviewed' | 'resolved', reportedId?: string) => {
     try {
       const reportRef = doc(db, 'reports', reportId);
-      await updateDoc(reportRef, { status: action });
+      
+      if (action === 'resolved' && reportedId) {
+        // Atomic batch for resolving report AND banning user
+        const batch = writeBatch(db);
+        batch.update(reportRef, { status: action });
+        batch.update(doc(db, 'profiles', reportedId), { is_banned: true });
+        await batch.commit();
+      } else {
+        await updateDoc(reportRef, { status: action });
+      }
+      
       fetchData();
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `reports/${reportId}`);
@@ -71,7 +83,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !isAdmin) return null;
 
   return (
     <div className="fixed inset-0 z-[160] flex items-center justify-center bg-space-bg/95 backdrop-blur-xl p-4 md:p-8">
@@ -146,7 +158,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
               <div className="h-full flex flex-col items-center justify-center text-center">
                 <CheckCircle2 className="w-16 h-16 text-forest-green/40 mb-4" />
                 <h3 className="text-xl font-bold text-cream">Clear Skies</h3>
-                <p className="text-cream/40">No {filter !== 'all' ? filter : ''} reports found. The tribe is peaceful.</p>
+                <p className="text-cream/40">No {filter !== 'all' ? filter : ''} reports found. Everything is peaceful.</p>
               </div>
             ) : (
               <div className="grid gap-4">
@@ -212,7 +224,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                       Dismiss
                     </button>
                     <button 
-                      onClick={() => handleAction(report.id, 'resolved')}
+                      onClick={() => handleAction(report.id, 'resolved', report.reported_id)}
                       className="flex-1 py-2 px-4 rounded-xl bg-clay text-white text-xs font-bold hover:brightness-110 shadow-lg transition-all"
                     >
                       Ban User
@@ -227,7 +239,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
               <div className="h-full flex flex-col items-center justify-center text-center">
                 <Shield className="w-16 h-16 text-taurus-gold/20 mb-4" />
                 <h3 className="text-xl font-bold text-cream">No Promo Requests</h3>
-                <p className="text-cream/40">Manifest your first promotion requests from the tribe.</p>
+                <p className="text-cream/40">Manifest your first promotion requests from the community.</p>
               </div>
             ) : (
               <div className="grid gap-4">

@@ -14,25 +14,20 @@ interface NavbarProps {
 }
 
 export default function Navbar({ memberCount: realMemberCount, onJoinClick, onProfileClick, className }: NavbarProps) {
-  const [displayCount, setDisplayCount] = React.useState(942);
-  const { user, profile } = useAuth();
-  const { sendMockNotification } = useNotifications();
+  const [activeJitter, setActiveJitter] = React.useState(12);
+  const { user, profile, signInWithGoogle } = useAuth();
 
   React.useEffect(() => {
-    // Fluctuating logic for "Taurus Tribe" live feeling
+    // Subtle live jitter to represent "current online seekers"
     const interval = setInterval(() => {
-      setDisplayCount(prev => {
-        // Natural jitter: -3 to +3
-        const change = Math.floor(Math.random() * 7) - 3;
+      setActiveJitter(prev => {
+        const change = Math.floor(Math.random() * 5) - 2;
         let next = prev + change;
-        
-        // Boundaries: 900 - 1000
-        if (next < 900) next = 900 + Math.floor(Math.random() * 5);
-        if (next > 1000) next = 1000 - Math.floor(Math.random() * 5);
-        
+        if (next < 5) next = 5;
+        if (next > 25) next = 25;
         return next;
       });
-    }, 2500); // Updated every 2.5s for "High Activity" feel
+    }, 5000);
 
     return () => clearInterval(interval);
   }, []);
@@ -57,7 +52,7 @@ export default function Navbar({ memberCount: realMemberCount, onJoinClick, onPr
         <div className="flex items-center gap-3 px-4 py-2 bg-white/5 backdrop-blur-md rounded-full border border-white/10">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">
-            {displayCount + realMemberCount} Members Active
+            {realMemberCount} Stars / {activeJitter} Online
           </span>
         </div>
         
@@ -67,7 +62,7 @@ export default function Navbar({ memberCount: realMemberCount, onJoinClick, onPr
         </div>
 
         <div className="flex flex-col items-center">
-            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-taurus-gold/40">Network Status</span>
+            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-taurus-gold/40">Community Connection</span>
             <span className="text-[10px] font-mono font-medium text-taurus-gold uppercase tracking-widest">Online</span>
         </div>
       </div>
@@ -95,15 +90,25 @@ export default function Navbar({ memberCount: realMemberCount, onJoinClick, onPr
             </button>
           </>
         ) : (
-          <Button 
-            variant="default"
-            onClick={onJoinClick}
-            className="bg-taurus-gold hover:bg-light-gold text-charcoal font-black uppercase tracking-widest text-[9px] md:text-[11px] px-4 md:px-8 py-4 md:py-6 rounded-lg md:rounded-xl shadow-[0_4px_20px_rgba(212,175,55,0.4)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.6)] hover:-translate-y-0.5 transition-all active:translate-y-0 flex items-center gap-2"
-          >
-            <Send className="w-3 h-3 md:w-4 md:h-4" />
-            <span className="hidden xs:inline">Post a Job / Event</span>
-            <span className="xs:hidden">Post</span>
-          </Button>
+          <div className="flex items-center gap-3">
+            <button
+               onClick={() => signInWithGoogle()}
+               className="hidden md:flex flex-col items-center justify-center px-4 py-2 hover:bg-white/5 rounded-xl transition-all"
+            >
+               <span className="text-[8px] font-black uppercase text-cream/40 mb-1">Start Your Journey</span>
+               <span className="text-[10px] font-black text-taurus-gold tracking-widest">JOIN US</span>
+            </button>
+            
+            <Button 
+              variant="default"
+              onClick={onJoinClick}
+              className="bg-taurus-gold hover:bg-light-gold text-charcoal font-black uppercase tracking-widest text-[9px] md:text-[11px] px-4 md:px-8 py-4 md:py-6 rounded-lg md:rounded-xl shadow-[0_4px_20px_rgba(212,175,55,0.4)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.6)] hover:-translate-y-0.5 transition-all active:translate-y-0 flex items-center gap-2"
+            >
+              <Send className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden xs:inline">Share your dreams</span>
+              <span className="xs:hidden">Post</span>
+            </Button>
+          </div>
         )}
       </div>
     </nav>

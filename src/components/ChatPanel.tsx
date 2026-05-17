@@ -208,7 +208,7 @@ export default function ChatPanel({ isOpen, onClose, onUpgradeClick, targetUserI
                 </motion.div>
                 <h3 className="text-2xl font-black mb-4 text-cream tracking-tight">Authorized Personnel Only.</h3>
                 <p className="text-cream/50 text-base mb-10 font-medium">
-                  This frequency is reserved for initialized members of the tribe. Upgrade your credentials to enter the nexus.
+                  This area is reserved for our members. Join us to start chatting!
                 </p>
                 <button 
                   onClick={onUpgradeClick}
